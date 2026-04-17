@@ -13,9 +13,9 @@ if __name__ == "__main__":
     import uvicorn
 
     cfg = get_settings()
-    print(f"\n🔷  Hayyan SOC Agents  —  http://{cfg.api_host}:{cfg.api_port}")
-    print(f"🔗  Splunk target      —  {cfg.splunk_scheme}://{cfg.splunk_host}:{cfg.splunk_port}")
-    print(f"🤖  LLM model         —  {cfg.model_name}\n")
+    print(f"\n[*] Hayyan SOC Agents  --  http://{cfg.api_host}:{cfg.api_port}")
+    print(f"[+] Splunk target      --  {cfg.splunk_scheme}://{cfg.splunk_host}:{cfg.splunk_port}")
+    print(f"[+] LLM model         --  {cfg.model_name}\n")
 
     uvicorn.run(
         "soc_agents.api.app:app",
