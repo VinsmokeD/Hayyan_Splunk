@@ -9,7 +9,7 @@ specialist. Specialists may loop back to triage to chain sub-tasks. The
 synthesize node formats the final actionable report.
 """
 from typing import Literal
-from langchain_anthropic import ChatAnthropic
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langgraph.graph import StateGraph, START, END
@@ -24,12 +24,12 @@ _cfg = get_settings()
 
 # ── LLM ─────────────────────────────────────────────────────────────────────
 
-def _llm(*, tools: list | None = None) -> ChatAnthropic:
-    llm = ChatAnthropic(
+def _llm(*, tools: list | None = None) -> ChatGoogleGenerativeAI:
+    llm = ChatGoogleGenerativeAI(
         model=_cfg.model_name,
-        anthropic_api_key=_cfg.anthropic_api_key,
+        google_api_key=_cfg.google_api_key,
         temperature=0,
-        max_tokens=4096,
+        max_output_tokens=4096,
     )
     if tools:
         return llm.bind_tools(tools)

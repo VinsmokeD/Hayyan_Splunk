@@ -3,7 +3,7 @@ from functools import lru_cache
 
 
 class Settings(BaseSettings):
-    anthropic_api_key: str
+    google_api_key: str
     splunk_host: str = "localhost"
     splunk_port: int = 8089
     splunk_username: str = "admin"
@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     splunk_verify_ssl: bool = False
     api_host: str = "0.0.0.0"
     api_port: int = 8500
-    model_name: str = "claude-sonnet-4-6"
+    model_name: str = "gemini-2.0-flash"
 
     class Config:
         env_file = ".env"

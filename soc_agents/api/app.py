@@ -49,7 +49,7 @@ async def health():
     return JSONResponse({
         "status": "ok",
         "splunk": "connected" if splunk_ok else "unreachable — expose port 8089 in Docker",
-        "model": "claude-sonnet-4-6",
+        "model": "gemini-2.0-flash",
     })
 
 
