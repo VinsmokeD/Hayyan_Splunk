@@ -1,11 +1,11 @@
 # Hayyan SOC Agent Bootstrap
-# Run this once to set up venv and install dependencies: .\setup.ps1
+# Run once to set up venv and install dependencies
 # Then start the server: .\run.ps1
 
 $ErrorActionPreference = "Stop"
 
 Write-Host ""
-Write-Host "  🔷  Hayyan SOC Agents — Bootstrap" -ForegroundColor Cyan
+Write-Host "  [*] Hayyan SOC Agents - Bootstrap" -ForegroundColor Cyan
 Write-Host ""
 
 # Create virtualenv if not present
@@ -25,11 +25,11 @@ pip install -r requirements.txt -q
 if (-not (Test-Path ".env")) {
     Copy-Item ".env.example" ".env"
     Write-Host ""
-    Write-Host "  ⚠️  .env file created from .env.example" -ForegroundColor Yellow
-    Write-Host "  📝 EDIT .env and set ANTHROPIC_API_KEY + Splunk credentials" -ForegroundColor Yellow
+    Write-Host "  [!] .env file created from .env.example" -ForegroundColor Yellow
+    Write-Host "  [!] EDIT .env and set GOOGLE_API_KEY + Splunk credentials" -ForegroundColor Yellow
     Write-Host ""
 }
 
 Write-Host ""
-Write-Host "  ✅  Setup complete! Run .\run.ps1 to start the server." -ForegroundColor Green
+Write-Host "  [OK] Setup complete! Run .\run.ps1 to start the server." -ForegroundColor Green
 Write-Host ""
