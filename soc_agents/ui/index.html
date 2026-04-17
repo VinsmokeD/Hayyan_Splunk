@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hayyan SOC — AI Intelligence Platform</title>
+  <meta name="description" content="Enterprise-grade AI-powered Security Operations Center for Hayyan Horizons. LangGraph multi-agent Splunk analysis." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <!-- marked.js for markdown rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- highlight.js for code block syntax highlighting -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+  <style>
+    /* ── Reset & Base ─────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-base:      #090d12;
+      --bg-surface:   #0e1520;
+      --bg-card:      #121c2b;
+      --bg-hover:     #192436;
+      --border:       #1e3050;
+      --border-glow:  #1e5799;
+
+      --accent:       #1d8cf8;
+      --accent-soft:  rgba(29,140,248,.12);
+      --accent-glow:  rgba(29,140,248,.35);
+
+      --red:          #f5365c;
+      --red-soft:     rgba(245,54,92,.12);
+      --orange:       #fb6340;
+      --green:        #2dce89;
+      --green-soft:   rgba(45,206,137,.12);
+      --yellow:       #ffd600;
+      --yellow-soft:  rgba(255,214,0,.12);
+      --purple:       #a855f7;
+
+      --text-primary: #e2eaf4;
+      --text-secondary: #7f9aaf;
+      --text-muted:   #445566;
+
+      --font-sans:   'Inter', system-ui, sans-serif;
+      --font-mono:   'JetBrains Mono', 'Fira Code', monospace;
+
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+
+      --transition: 0.18s ease;
+    }
+
+    html, body { height: 100%; overflow: hidden; }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg-base);
+      color: var(--text-primary);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Layout Shell ─────────────────────────────────────────────────── */
+    .shell {
+      display: grid;
+      grid-template-columns: 260px 1fr 280px;
+      grid-template-rows: 56px 1fr;
+      grid-template-areas:
+        "header header header"
+        "sidebar  main   right";
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── Topbar ───────────────────────────────────────────────────────── */
+    .topbar {
+      grid-area: header;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border);
+      gap: 16px;
+      z-index: 10;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: -0.3px;
+      white-space: nowrap;
+    }
+
+    .logo-icon {
+      width: 30px;
+      height: 30px;
+      background: linear-gradient(135deg, var(--accent), var(--purple));
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      font-size: 16px;
+    }
+
+    .topbar-spacer { flex: 1; }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 4px 12px;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+      animation: pulse 2s infinite;
+    }
+
+    .status-dot.offline { background: var(--red); box-shadow: 0 0 6px var(--red); animation: none; }
+    .status-dot.connecting { background: var(--yellow); box-shadow: 0 0 6px var(--yellow); }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .model-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: linear-gradient(135deg, rgba(168,85,247,.15), rgba(29,140,248,.15));
+      border: 1px solid rgba(168,85,247,.3);
+      color: var(--purple);
+    }
+
+    /* ── Left Sidebar ─────────────────────────────────────────────────── */
+    .sidebar {
+      grid-area: sidebar;
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sidebar-section {
+      padding: 14px 16px 10px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--text-muted);
+    }
+
+    .agent-card {
+      margin: 0 10px 4px;
+      padding: 10px 12px;
+      border-radius: var(--radius-md);
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .agent-card:hover {
+      background: var(--bg-hover);
+      border-color: var(--border);
+    }
+
+    .agent-card.active {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+    }
+
+    .agent-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      font-size: 15px;
+      flex-shrink: 0;
+    }
+
+    .agent-meta { flex: 1; min-width: 0; }
+
+    .agent-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .agent-desc {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 1px;
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 10px 0;
+    }
+
+    .quick-prompts-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 10px 10px;
+    }
+
+    .quick-prompt {
+      padding: 8px 12px;
+      font-size: 11px;
+      color: var(--text-secondary);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: var(--transition);
+      border-left: 2px solid transparent;
+      display: flex;
+      align-items: flex-start;
+      gap: 7px;
+      line-height: 1.4;
+    }
+
+    .quick-prompt:hover {
+      background: var(--bg-hover);
+      border-left-color: var(--accent);
+      color: var(--text-primary);
+    }
+
+    .quick-prompt-icon { font-size: 13px; flex-shrink: 0; margin-top: 1px; }
+
+    /* ── Main Chat ────────────────────────────────────────────────────── */
+    .main {
+      grid-area: main;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Scanning grid background */
+    .main::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(29,140,248,.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(29,140,248,.03) 1px, transparent 1px);
+      background-size: 32px 32px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Scrollbar */
+    .chat-messages::-webkit-scrollbar { width: 5px; }
+    .chat-messages::-webkit-scrollbar-track { background: transparent; }
+    .chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    /* Welcome hero */
+    .welcome-hero {
+      text-align: center;
+      padding: 60px 20px 40px;
+    }
+
+    .welcome-icon {
+      width: 64px;
+      height: 64px;
+      background: linear-gradient(135deg, var(--accent), var(--purple));
+      border-radius: 18px;
+      display: grid;
+      place-items: center;
+      font-size: 30px;
+      margin: 0 auto 20px;
+      box-shadow: 0 0 40px rgba(29,140,248,.3), 0 0 80px rgba(168,85,247,.15);
+    }
+
+    .welcome-hero h1 {
+      font-size: 22px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #e2eaf4, var(--accent), var(--purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 10px;
+    }
+
+    .welcome-hero p {
+      font-size: 13px;
+      color: var(--text-secondary);
+      max-width: 480px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    .welcome-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      max-width: 520px;
+      margin: 28px auto 0;
+    }
+
+    .welcome-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      cursor: pointer;
+      transition: var(--transition);
+      text-align: left;
+    }
+
+    .welcome-card:hover {
+      border-color: var(--accent);
+      background: var(--bg-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 20px rgba(29,140,248,.1);
+    }
+
+    .welcome-card-icon { font-size: 18px; margin-bottom: 6px; }
+    .welcome-card-title { font-size: 12px; font-weight: 600; color: var(--text-primary); }
+    .welcome-card-desc { font-size: 11px; color: var(--text-muted); margin-top: 3px; line-height: 1.4; }
+
+    /* Messages */
+    .msg {
+      display: flex;
+      gap: 12px;
+      animation: fadeSlideIn 0.25s ease;
+    }
+
+    @keyframes fadeSlideIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .msg-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .msg-avatar.user { background: linear-gradient(135deg, var(--accent), #0056d2); }
+    .msg-avatar.agent { background: linear-gradient(135deg, var(--purple), #6366f1); }
+
+    .msg-body { flex: 1; min-width: 0; }
+
+    .msg-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .msg-role {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .msg-ts {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .msg-agent-tag {
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+    }
+
+    .tag-query     { background: rgba(29,140,248,.15); color: var(--accent); }
+    .tag-alert     { background: rgba(245,54,92,.15); color: var(--red); }
+    .tag-invest    { background: rgba(168,85,247,.15); color: var(--purple); }
+    .tag-report    { background: rgba(45,206,137,.15); color: var(--green); }
+    .tag-triage    { background: var(--yellow-soft); color: var(--yellow); }
+    .tag-synth     { background: var(--green-soft); color: var(--green); }
+
+    .msg-content {
+      font-size: 13px;
+      line-height: 1.65;
+      color: var(--text-primary);
+    }
+
+    .msg.user .msg-content {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 10px 14px;
+    }
+
+    /* Markdown overrides inside agent messages */
+    .msg-content h1, .msg-content h2, .msg-content h3 {
+      color: var(--text-primary);
+      margin: 14px 0 6px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .msg-content h1 { font-size: 16px; }
+    .msg-content h2 { font-size: 14px; color: var(--accent); }
+
+    .msg-content p { margin-bottom: 8px; }
+
+    .msg-content ul, .msg-content ol {
+      padding-left: 18px;
+      margin-bottom: 8px;
+    }
+
+    .msg-content li { margin-bottom: 3px; }
+
+    .msg-content table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      margin: 10px 0;
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+    }
+
+    .msg-content th {
+      background: var(--bg-hover);
+      padding: 6px 10px;
+      text-align: left;
+      font-weight: 600;
+      color: var(--accent);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .msg-content td {
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .msg-content tr:hover td { background: var(--bg-hover); }
+
+    .msg-content code {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      background: var(--bg-base);
+      padding: 1px 5px;
+      border-radius: 4px;
+      color: var(--accent);
+    }
+
+    .msg-content pre {
+      background: var(--bg-base);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      overflow-x: auto;
+      margin: 10px 0;
+    }
+
+    .msg-content pre code {
+      background: none;
+      padding: 0;
+      color: var(--text-primary);
+      font-size: 12px;
+    }
+
+    .msg-content strong { color: var(--text-primary); font-weight: 600; }
+    .msg-content em { color: var(--text-secondary); }
+
+    /* Status / typing indicator */
+    .status-msg {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      font-size: 12px;
+      color: var(--text-secondary);
+      max-width: 320px;
+      animation: fadeSlideIn 0.2s ease;
+    }
+
+    .typing-dots {
+      display: flex;
+      gap: 3px;
+    }
+
+    .typing-dots span {
+      width: 5px;
+      height: 5px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: bounce 1.2s infinite;
+    }
+
+    .typing-dots span:nth-child(2) { animation-delay: 0.15s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.3s; }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: translateY(0); opacity: 0.5; }
+      40% { transform: translateY(-4px); opacity: 1; }
+    }
+
+    /* ── Input Bar ────────────────────────────────────────────────────── */
+    .input-area {
+      padding: 16px 28px 20px;
+      background: var(--bg-surface);
+      border-top: 1px solid var(--border);
+      position: relative;
+      z-index: 2;
+    }
+
+    .input-wrapper {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 12px 14px 12px 16px;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+
+    .input-wrapper:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    #chat-input {
+      flex: 1;
+      background: none;
+      border: none;
+      outline: none;
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      resize: none;
+      max-height: 140px;
+      line-height: 1.5;
+    }
+
+    #chat-input::placeholder { color: var(--text-muted); }
+
+    .send-btn {
+      width: 34px;
+      height: 34px;
+      background: linear-gradient(135deg, var(--accent), #0056d2);
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      transition: var(--transition);
+      color: white;
+    }
+
+    .send-btn:hover { filter: brightness(1.15); transform: scale(1.05); }
+    .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    .send-btn svg { width: 16px; height: 16px; }
+
+    .input-hints {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .hint-key {
+      background: var(--bg-hover);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+    }
+
+    /* ── Right Panel ──────────────────────────────────────────────────── */
+    .right-panel {
+      grid-area: right;
+      background: var(--bg-surface);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel-tab-bar {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel-tab {
+      flex: 1;
+      padding: 10px 0;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: var(--transition);
+    }
+
+    .panel-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    .panel-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px;
+    }
+
+    .panel-content::-webkit-scrollbar { width: 4px; }
+    .panel-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    /* Alert items */
+    .alert-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      margin-bottom: 8px;
+      transition: var(--transition);
+      cursor: pointer;
+      border-left: 3px solid transparent;
+    }
+
+    .alert-item:hover { background: var(--bg-hover); }
+    .alert-item.critical { border-left-color: var(--red); }
+    .alert-item.high     { border-left-color: var(--orange); }
+    .alert-item.medium   { border-left-color: var(--yellow); }
+    .alert-item.low      { border-left-color: var(--green); }
+
+    .alert-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+
+    .alert-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .severity-badge {
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .severity-badge.critical { background: var(--red-soft); color: var(--red); }
+    .severity-badge.high { background: rgba(251,99,64,.15); color: var(--orange); }
+    .severity-badge.medium { background: var(--yellow-soft); color: var(--yellow); }
+    .severity-badge.low  { background: var(--green-soft); color: var(--green); }
+
+    .alert-time { font-size: 10px; color: var(--text-muted); }
+
+    /* Index stats */
+    .index-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      margin-bottom: 6px;
+      font-size: 11px;
+    }
+
+    .index-name {
+      font-family: var(--font-mono);
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    .index-count {
+      color: var(--text-secondary);
+      font-weight: 600;
+    }
+
+    /* Panel button */
+    .panel-btn {
+      width: 100%;
+      padding: 8px 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .panel-btn:hover {
+      background: var(--bg-hover);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* ── Misc ─────────────────────────────────────────────────────────── */
+    .error-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      background: var(--red-soft);
+      border: 1px solid rgba(245,54,92,.3);
+      border-radius: var(--radius-md);
+      font-size: 12px;
+      color: var(--red);
+    }
+
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    /* ── Responsive ─────────────────────────────────────────────────── */
+    @media (max-width: 900px) {
+      .shell {
+        grid-template-columns: 48px 1fr;
+        grid-template-areas:
+          "header header"
+          "sidebar main";
+      }
+      .right-panel { display: none; }
+      .agent-name, .agent-desc { display: none; }
+      .agent-card { margin: 0 4px 4px; justify-content: center; padding: 8px; }
+      .sidebar-section, .quick-prompts-list, .divider { display: none; }
+    }
+  </style>
+</head>
+
+<body>
+<div class="shell">
+
+  <!-- ── Topbar ── -->
+  <header class="topbar">
+    <div class="logo">
+      <div class="logo-icon">🛡️</div>
+      <span>Hayyan SOC</span>
+    </div>
+    <span style="font-size:12px;color:var(--text-muted);font-weight:400;">AI Intelligence Platform</span>
+    <div class="topbar-spacer"></div>
+    <div class="status-pill">
+      <div class="status-dot connecting" id="ws-status-dot"></div>
+      <span id="ws-status-text">Connecting...</span>
+    </div>
+    <div class="model-badge">Claude Sonnet 4.6</div>
+  </header>
+
+  <!-- ── Left Sidebar ── -->
+  <aside class="sidebar">
+    <div class="sidebar-section">Specialists</div>
+
+    <div class="agent-card" id="agent-triage" title="Auto-routes your request">
+      <div class="agent-icon" style="background:linear-gradient(135deg,var(--yellow),var(--orange));">🎯</div>
+      <div class="agent-meta">
+        <div class="agent-name">Triage</div>
+        <div class="agent-desc">Auto-routes requests</div>
+      </div>
+    </div>
+
+    <div class="agent-card" id="agent-query" title="Run Splunk SPL queries">
+      <div class="agent-icon" style="background:linear-gradient(135deg,var(--accent),#0056d2);">🔍</div>
+      <div class="agent-meta">
+        <div class="agent-name">Query Specialist</div>
+        <div class="agent-desc">SPL & index search</div>
+      </div>
+    </div>
+
+    <div class="agent-card" id="agent-alert" title="Triage active alerts">
+      <div class="agent-icon" style="background:linear-gradient(135deg,var(--red),#b91c1c);">🚨</div>
+      <div class="agent-meta">
+        <div class="agent-name">Alert Triage</div>
+        <div class="agent-desc">Active alert analysis</div>
+      </div>
+    </div>
+
+    <div class="agent-card" id="agent-invest" title="Deep-dive investigations">
+      <div class="agent-icon" style="background:linear-gradient(135deg,var(--purple),#6366f1);">🕵️</div>
+      <div class="agent-meta">
+        <div class="agent-name">Investigator</div>
+        <div class="agent-desc">Threat deep-dive</div>
+      </div>
+    </div>
+
+    <div class="agent-card" id="agent-report" title="Generate SOC reports">
+      <div class="agent-icon" style="background:linear-gradient(135deg,var(--green),#059669);">📋</div>
+      <div class="agent-meta">
+        <div class="agent-name">Report Writer</div>
+        <div class="agent-desc">IOCs & MITRE reports</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="sidebar-section">Quick Prompts</div>
+
+    <div class="quick-prompts-list" id="quick-prompts">
+      <div class="quick-prompt" data-prompt="What active alerts are currently triggered in Splunk?">
+        <span class="quick-prompt-icon">🚨</span>Show all active alerts
+      </div>
+      <div class="quick-prompt" data-prompt="Run an SPL query to show all failed login events (EventCode=4625) in the last 24 hours grouped by user.">
+        <span class="quick-prompt-icon">🔍</span>Failed logins last 24h
+      </div>
+      <div class="quick-prompt" data-prompt="Investigate the user account svc_it — check for Kerberoasting activity and suspicious TGS requests.">
+        <span class="quick-prompt-icon">🕵️</span>Investigate svc_it account
+      </div>
+      <div class="quick-prompt" data-prompt="Show me all SSH brute force events from index=linux_secure in the last 6 hours.">
+        <span class="quick-prompt-icon">🐧</span>SSH brute force events
+      </div>
+      <div class="quick-prompt" data-prompt="Investigate IP address 192.168.56.10 — what activity is associated with it across all indexes?">
+        <span class="quick-prompt-icon">🌐</span>Investigate 192.168.56.10
+      </div>
+      <div class="quick-prompt" data-prompt="Investigate a potential password spray attack against the hayyan.local domain. Check EventCode 4625 patterns.">
+        <span class="quick-prompt-icon">💣</span>Password spray analysis
+      </div>
+      <div class="quick-prompt" data-prompt="Check index=sysmon for suspicious process creation (EventCode=1) with encoded PowerShell commands in the last 24h.">
+        <span class="quick-prompt-icon">⚡</span>Sysmon PowerShell abuse
+      </div>
+      <div class="quick-prompt" data-prompt="Generate a complete SOC investigation report for the Kerberoasting attempt detected on svc_it including MITRE mapping and IOCs.">
+        <span class="quick-prompt-icon">📋</span>Kerberoasting full report
+      </div>
+      <div class="quick-prompt" data-prompt="Show me Nginx web scanner activity from index=linux_web — find IPs generating excessive 404 errors.">
+        <span class="quick-prompt-icon">🕸️</span>Web scanner detection
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Main Chat ── -->
+  <main class="main">
+    <div class="chat-messages" id="chat-messages">
+      <div class="welcome-hero" id="welcome-hero">
+        <div class="welcome-icon">🛡️</div>
+        <h1>Hayyan SOC AI Platform</h1>
+        <p>Enterprise LangGraph multi-agent system connected to Splunk. Ask me to analyze alerts, run queries, investigate threats, or generate full SOC reports.</p>
+
+        <div class="welcome-grid">
+          <div class="welcome-card" onclick="sendQuick('What active alerts are currently triggered in Splunk?')">
+            <div class="welcome-card-icon">🚨</div>
+            <div class="welcome-card-title">Check Active Alerts</div>
+            <div class="welcome-card-desc">Fetch and triage all fired Splunk alerts</div>
+          </div>
+          <div class="welcome-card" onclick="sendQuick('Investigate a potential password spray attack against hayyan.local. Check EventCode 4625.')">
+            <div class="welcome-card-icon">🔐</div>
+            <div class="welcome-card-title">Investigate Threat</div>
+            <div class="welcome-card-desc">Deep-dive credential attack analysis</div>
+          </div>
+          <div class="welcome-card" onclick="sendQuick('Run SPL to show top 10 source IPs with failed logins from index=windows_events in the last 24h.')">
+            <div class="welcome-card-icon">🔍</div>
+            <div class="welcome-card-title">Run SPL Query</div>
+            <div class="welcome-card-desc">Expert Splunk search and enrichment</div>
+          </div>
+          <div class="welcome-card" onclick="sendQuick('Generate a complete SOC investigation report with MITRE ATT&CK mapping and IOC list for the current incident.')">
+            <div class="welcome-card-icon">📋</div>
+            <div class="welcome-card-title">Generate Report</div>
+            <div class="welcome-card-desc">Executive & technical SOC reports</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="input-area">
+      <div class="input-wrapper">
+        <textarea
+          id="chat-input"
+          rows="1"
+          placeholder="Ask the SOC AI: investigate an alert, run a Splunk query, analyze a threat..."
+        ></textarea>
+        <button class="send-btn" id="send-btn" onclick="sendMessage()" disabled title="Send (Enter)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </button>
+      </div>
+      <div class="input-hints">
+        <span class="hint-key">Enter</span> send &nbsp;·&nbsp;
+        <span class="hint-key">Shift+Enter</span> newline &nbsp;·&nbsp;
+        <span style="color:var(--accent);">🟢 WebSocket streaming active</span>
+      </div>
+    </div>
+  </main>
+
+  <!-- ── Right Panel ── -->
+  <aside class="right-panel">
+    <div class="panel-tab-bar">
+      <div class="panel-tab active" id="tab-alerts" onclick="switchTab('alerts')">Alerts</div>
+      <div class="panel-tab" id="tab-indexes" onclick="switchTab('indexes')">Indexes</div>
+    </div>
+
+    <div class="panel-content" id="panel-alerts">
+      <button class="panel-btn" onclick="loadAlerts()">⟳ Refresh Alerts</button>
+      <div id="alerts-list">
+        <div style="font-size:12px;color:var(--text-muted);text-align:center;padding:20px 0;">
+          Click refresh to load active alerts
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-content tab-pane" id="panel-indexes">
+      <button class="panel-btn" onclick="loadIndexes()">⟳ Refresh Indexes</button>
+      <div id="indexes-list">
+        <div style="font-size:12px;color:var(--text-muted);text-align:center;padding:20px 0;">
+          Click refresh to load index stats
+        </div>
+      </div>
+    </div>
+  </aside>
+
+</div>
+
+<script>
+/* ─────────────────────────────────────────────────
+   State
+───────────────────────────────────────────────── */
+let ws = null;
+let threadId = null;
+let isStreaming = false;
+let currentStatusEl = null;
+let partialBuffer = {};
+
+/* ─────────────────────────────────────────────────
+   Marked config
+───────────────────────────────────────────────── */
+marked.setOptions({
+  gfm: true,
+  breaks: true,
+  highlight: (code, lang) => {
+    if (lang && hljs.getLanguage(lang)) {
+      return hljs.highlight(code, { language: lang }).value;
+    }
+    return hljs.highlightAuto(code).value;
+  }
+});
+
+/* ─────────────────────────────────────────────────
+   WebSocket
+───────────────────────────────────────────────── */
+function connectWS() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const url = `${proto}://${location.host}/ws/chat`;
+  ws = new WebSocket(url);
+
+  ws.onopen = () => {
+    setWSStatus('online', 'Splunk Connected');
+    document.getElementById('send-btn').disabled = false;
+  };
+
+  ws.onclose = () => {
+    setWSStatus('offline', 'Disconnected');
+    document.getElementById('send-btn').disabled = true;
+    isStreaming = false;
+    setTimeout(connectWS, 3000);
+  };
+
+  ws.onerror = () => {
+    setWSStatus('offline', 'Connection Error');
+  };
+
+  ws.onmessage = (evt) => {
+    const msg = JSON.parse(evt.data);
+    handleWSMessage(msg);
+  };
+}
+
+function setWSStatus(state, text) {
+  const dot = document.getElementById('ws-status-dot');
+  const label = document.getElementById('ws-status-text');
+  dot.className = `status-dot ${state === 'online' ? '' : state === 'offline' ? 'offline' : 'connecting'}`;
+  label.textContent = text;
+}
+
+/* ─────────────────────────────────────────────────
+   Message handling
+───────────────────────────────────────────────── */
+function handleWSMessage(msg) {
+  switch (msg.type) {
+    case 'status':
+      showStatusMsg(msg.content);
+      break;
+
+    case 'partial':
+      // Accumulate partial content per agent
+      const agentKey = msg.agent || 'agent';
+      if (!partialBuffer[agentKey]) partialBuffer[agentKey] = '';
+      partialBuffer[agentKey] += msg.content;
+      // Update a live message bubble
+      updatePartialMsg(agentKey, partialBuffer[agentKey]);
+      break;
+
+    case 'report':
+      clearStatusMsg();
+      clearPartialMsgs();
+      partialBuffer = {};
+      appendAgentMsg(msg.content, 'synthesize');
+      if (msg.thread_id) threadId = msg.thread_id;
+      break;
+
+    case 'done':
+      clearStatusMsg();
+      isStreaming = false;
+      document.getElementById('send-btn').disabled = false;
+      document.getElementById('chat-input').disabled = false;
+      if (msg.thread_id) threadId = msg.thread_id;
+      break;
+
+    case 'error':
+      clearStatusMsg();
+      appendErrorMsg(msg.content);
+      isStreaming = false;
+      document.getElementById('send-btn').disabled = false;
+      document.getElementById('chat-input').disabled = false;
+      break;
+  }
+}
+
+/* ─────────────────────────────────────────────────
+   DOM helpers
+───────────────────────────────────────────────── */
+function getContainer() {
+  return document.getElementById('chat-messages');
+}
+
+function hideWelcome() {
+  const hero = document.getElementById('welcome-hero');
+  if (hero) hero.style.display = 'none';
+}
+
+function scrollBottom() {
+  const c = getContainer();
+  c.scrollTop = c.scrollHeight;
+}
+
+function now() {
+  return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function appendUserMsg(text) {
+  hideWelcome();
+  const el = document.createElement('div');
+  el.className = 'msg user';
+  el.innerHTML = `
+    <div class="msg-avatar user">👤</div>
+    <div class="msg-body">
+      <div class="msg-header">
+        <span class="msg-role">You</span>
+        <span class="msg-ts">${now()}</span>
+      </div>
+      <div class="msg-content">${escapeHtml(text)}</div>
+    </div>
+  `;
+  getContainer().appendChild(el);
+  scrollBottom();
+}
+
+function agentTagHTML(agentName) {
+  const map = {
+    query_agent: ['tag-query', 'Query Specialist'],
+    alert_agent: ['tag-alert', 'Alert Triage'],
+    investigation_agent: ['tag-invest', 'Investigator'],
+    report_agent: ['tag-report', 'Report Agent'],
+    triage: ['tag-triage', 'Triage'],
+    synthesize: ['tag-synth', '⭐ Final Report'],
+  };
+  const [cls, label] = map[agentName] || ['tag-triage', agentName];
+  return `<span class="msg-agent-tag ${cls}">${label}</span>`;
+}
+
+function appendAgentMsg(markdown, agentName) {
+  hideWelcome();
+  const el = document.createElement('div');
+  el.className = 'msg agent';
+  el.innerHTML = `
+    <div class="msg-avatar agent">🤖</div>
+    <div class="msg-body">
+      <div class="msg-header">
+        <span class="msg-role">SOC AI</span>
+        ${agentTagHTML(agentName)}
+        <span class="msg-ts">${now()}</span>
+      </div>
+      <div class="msg-content">${marked.parse(markdown)}</div>
+    </div>
+  `;
+  getContainer().appendChild(el);
+  // Highlight code blocks
+  el.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
+  scrollBottom();
+
+  // Update active agent in sidebar
+  highlightAgent(agentName);
+}
+
+// Partial (live) message bubble per agent
+let partialMsgEls = {};
+
+function updatePartialMsg(agentKey, content) {
+  hideWelcome();
+  if (!partialMsgEls[agentKey]) {
+    const el = document.createElement('div');
+    el.className = 'msg agent';
+    el.dataset.agentKey = agentKey;
+    el.innerHTML = `
+      <div class="msg-avatar agent">🤖</div>
+      <div class="msg-body">
+        <div class="msg-header">
+          <span class="msg-role">SOC AI</span>
+          ${agentTagHTML(agentKey)}
+          <span class="msg-ts">${now()}</span>
+        </div>
+        <div class="msg-content"></div>
+      </div>
+    `;
+    getContainer().appendChild(el);
+    partialMsgEls[agentKey] = el;
+  }
+  const contentDiv = partialMsgEls[agentKey].querySelector('.msg-content');
+  contentDiv.innerHTML = marked.parse(content);
+  contentDiv.querySelectorAll('pre code').forEach(b => hljs.highlightElement(b));
+  scrollBottom();
+}
+
+function clearPartialMsgs() {
+  Object.values(partialMsgEls).forEach(el => el.remove());
+  partialMsgEls = {};
+}
+
+function showStatusMsg(text) {
+  clearStatusMsg();
+  const el = document.createElement('div');
+  el.id = 'status-indicator';
+  el.className = 'status-msg';
+  el.innerHTML = `
+    <div class="typing-dots"><span></span><span></span><span></span></div>
+    <span>${escapeHtml(text)}</span>
+  `;
+  getContainer().appendChild(el);
+  scrollBottom();
+  currentStatusEl = el;
+}
+
+function clearStatusMsg() {
+  const el = document.getElementById('status-indicator');
+  if (el) el.remove();
+  currentStatusEl = null;
+}
+
+function appendErrorMsg(text) {
+  const el = document.createElement('div');
+  el.className = 'error-pill';
+  el.innerHTML = `⚠️ <span>${escapeHtml(text)}</span>`;
+  getContainer().appendChild(el);
+  scrollBottom();
+}
+
+function highlightAgent(name) {
+  document.querySelectorAll('.agent-card').forEach(c => c.classList.remove('active'));
+  const map = {
+    query_agent: 'agent-query',
+    alert_agent: 'agent-alert',
+    investigation_agent: 'agent-invest',
+    report_agent: 'agent-report',
+    synthesize: 'agent-report',
+    triage: 'agent-triage',
+  };
+  const id = map[name];
+  if (id) document.getElementById(id)?.classList.add('active');
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ─────────────────────────────────────────────────
+   Send
+───────────────────────────────────────────────── */
+function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text || isStreaming || !ws || ws.readyState !== WebSocket.OPEN) return;
+
+  appendUserMsg(text);
+  input.value = '';
+  input.style.height = 'auto';
+
+  isStreaming = true;
+  document.getElementById('send-btn').disabled = true;
+  input.disabled = true;
+  partialBuffer = {};
+
+  ws.send(JSON.stringify({ message: text, thread_id: threadId }));
+}
+
+function sendQuick(text) {
+  document.getElementById('chat-input').value = text;
+  sendMessage();
+}
+
+/* ─────────────────────────────────────────────────
+   Input events
+───────────────────────────────────────────────── */
+document.getElementById('chat-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+document.getElementById('chat-input').addEventListener('input', function() {
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 140) + 'px';
+});
+
+document.querySelectorAll('.quick-prompt').forEach(el => {
+  el.addEventListener('click', () => sendQuick(el.dataset.prompt));
+});
+
+/* ─────────────────────────────────────────────────
+   Right panel
+───────────────────────────────────────────────── */
+function switchTab(name) {
+  document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel-content').forEach(p => p.classList.remove('active'));
+  document.getElementById(`tab-${name}`).classList.add('active');
+  document.getElementById(`panel-${name}`).classList.add('active');
+}
+
+// Override panel-content default visibility
+document.getElementById('panel-alerts').classList.add('active');
+
+async function loadAlerts() {
+  const container = document.getElementById('alerts-list');
+  container.innerHTML = '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:20px 0;">Loading...</div>';
+  try {
+    const res = await fetch('/api/alerts');
+    const data = await res.json();
+    if (data.error) { container.innerHTML = `<div class="error-pill">⚠️ ${escapeHtml(data.error)}</div>`; return; }
+    const alerts = data.alerts || [];
+    if (!alerts.length) {
+      container.innerHTML = '<div style="font-size:12px;color:var(--green);text-align:center;padding:20px 0;">✅ No active alerts</div>';
+      return;
+    }
+    container.innerHTML = alerts.map(a => {
+      const sev = (a.severity || 'medium').toLowerCase();
+      return `
+        <div class="alert-item ${sev}" onclick="sendQuick('Analyze this alert: ${escapeHtml(a.name)}. What does it mean and what should I do?')">
+          <div class="alert-name">${escapeHtml(a.name)}</div>
+          <div class="alert-meta">
+            <span class="severity-badge ${sev}">${sev}</span>
+            <span class="alert-time">${a.trigger_time ? new Date(a.trigger_time * 1000).toLocaleString() : ''}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (e) {
+    container.innerHTML = `<div class="error-pill">⚠️ ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+async function loadIndexes() {
+  const container = document.getElementById('indexes-list');
+  container.innerHTML = '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:20px 0;">Loading...</div>';
+  try {
+    const res = await fetch('/api/indexes');
+    const data = await res.json();
+    if (data.error) { container.innerHTML = `<div class="error-pill">⚠️ ${escapeHtml(data.error)}</div>`; return; }
+    const indexes = (data.indexes || []).filter(i => ['linux_audit','linux_web','linux_secure','windows_events','sysmon'].includes(i.name));
+    if (!indexes.length) {
+      container.innerHTML = '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:20px 0;">No indexes found</div>';
+      return;
+    }
+    container.innerHTML = indexes.map(i => `
+      <div class="index-row">
+        <span class="index-name">${escapeHtml(i.name)}</span>
+        <span class="index-count">${(i.total_event_count || 0).toLocaleString()} events</span>
+      </div>
+    `).join('');
+  } catch(e) {
+    container.innerHTML = `<div class="error-pill">⚠️ ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+/* ─────────────────────────────────────────────────
+   Init
+───────────────────────────────────────────────── */
+connectWS();
+// Auto-load alerts on page load after 2s
+setTimeout(() => { loadAlerts(); loadIndexes(); }, 2000);
+</script>
+</body>
+</html>
