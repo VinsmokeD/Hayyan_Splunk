@@ -26,6 +26,19 @@ from ..core.splunk_client import SplunkClient, SplunkConnectionError
 log = logging.getLogger(__name__)
 _cfg = get_settings()
 
+
+def _extract_text(content) -> str:
+    """Normalize Gemini content blocks or plain strings to a single string."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return "\n".join(
+            block.get("text", "") if isinstance(block, dict) else str(block)
+            for block in content
+            if not isinstance(block, dict) or block.get("type") == "text"
+        )
+    return str(content)
+
 app = FastAPI(title="Hayyan SOC Agents", version="2.0.0")
 app.add_middleware(
     CORSMiddleware,
@@ -100,14 +113,17 @@ async def chat(body: dict):
         result = soc_graph.invoke(state, config=config)
         messages = result.get("messages", [])
         final = messages[-1] if messages else None
-        final_text = final.content if final and hasattr(final, "content") else ""
+        final_text = _extract_text(final.content) if final and hasattr(final, "content") else ""
         return JSONResponse({
             "thread_id": thread_id,
             "report": final_text,
         })
     except Exception as e:
+        msg = str(e)
+        if "429" in msg or "RESOURCE_EXHAUSTED" in msg:
+            return JSONResponse({"error": "Gemini rate limit hit. Wait ~60s or switch MODEL_NAME to gemini-2.0-flash in .env."}, status_code=429)
         log.exception("chat invoke failed")
-        return JSONResponse({"error": str(e)}, status_code=500)
+        return JSONResponse({"error": msg}, status_code=500)
 
 
 # ── WebSocket Streaming ───────────────────────────────────────────────────────
@@ -152,7 +168,8 @@ async def ws_chat(websocket: WebSocket):
                                     })
                             # Tool result
                             elif isinstance(msg, ToolMessage):
-                                preview = (msg.content[:200] + "...") if len(msg.content) > 200 else msg.content
+                                raw = _extract_text(msg.content)
+                                preview = (raw[:200] + "...") if len(raw) > 200 else raw
                                 await websocket.send_json({
                                     "type": "tool_result",
                                     "tool": getattr(msg, "name", "unknown"),
@@ -162,7 +179,7 @@ async def ws_chat(websocket: WebSocket):
                             elif isinstance(msg, AIMessage) and msg.content:
                                 await websocket.send_json({
                                     "type": "report",
-                                    "content": msg.content,
+                                    "content": _extract_text(msg.content),
                                     "thread_id": thread_id,
                                 })
 
