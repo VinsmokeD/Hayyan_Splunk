@@ -1,6 +1,6 @@
-# Hayyan SOC — AI Intelligence Platform
+# Hayyan SOC — Autonomous AI Threat Investigator
 
-Enterprise-grade LangGraph + LangChain multi-agent SOC system connected to Splunk.
+Enterprise-grade LangGraph + LangChain multi-agent SOC system powered by Google Gemini. Autonomous Tier-1 analyst that watches Splunk, investigates alerts, and generates incident reports.
 
 ## Architecture
 
@@ -32,31 +32,51 @@ User (Browser UI)
 ## Quick Start
 
 ### 1. Prerequisites
-- Python 3.11+
-- Splunk Enterprise running with REST API on port 8089
-- Anthropic API key
+- Python 3.10+
+- Splunk Enterprise (Docker or on-prem) with REST API on port 8089
+- Google Gemini API Key (free tier works)
 
-### 2. Setup
-```powershell
-cd C:\Users\Mahmo\Hayyan_Splunk
-.\setup.ps1
+### 2. Install & Setup
+```bash
+# Windows PowerShell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+
+# Mac/Linux bash
+python -m venv .venv
+source .venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
 ```
 
 ### 3. Configure `.env`
+Copy `.env.example` to `.env` and fill in:
 ```
-ANTHROPIC_API_KEY=sk-ant-...
-SPLUNK_HOST=<your-splunk-ip>
+GOOGLE_API_KEY=your_gemini_api_key_here
+SPLUNK_HOST=192.168.56.1
 SPLUNK_PORT=8089
 SPLUNK_USERNAME=admin
-SPLUNK_PASSWORD=<your-password>
+SPLUNK_PASSWORD=Hayyan@2024!
+SPLUNK_SCHEME=https
+MODEL_NAME=gemini-2.5-flash
 ```
 
-### 4. Run
-```powershell
-.\run.ps1
+### 4. Initialize Knowledge Base
+```bash
+python soc_agents/knowledge/build_kb.py
 ```
 
-Open **http://localhost:8500** in your browser.
+### 5. Run the System
+```bash
+# Terminal 1: Start API server
+python -m uvicorn soc_agents.api.app:app --host 0.0.0.0 --port 8500 --reload
+
+# Terminal 2 (optional): Run Streamlit dashboard
+streamlit run soc_agents/ui/streamlit_app.py
+```
+
+Open **http://localhost:8500** for web UI or **http://localhost:8501** for dashboard.
 
 ## API Endpoints
 

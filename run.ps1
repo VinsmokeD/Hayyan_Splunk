@@ -1,34 +1,42 @@
-# Hayyan SOC Agents - Start Server
-# Usage: .\run.ps1
-# Prereq: run .\setup.ps1 first
+# Hayyan SOC — Start the system
 
-$ErrorActionPreference = "Stop"
-
-Write-Host ""
-Write-Host "  [*] Hayyan SOC AI Agent Platform" -ForegroundColor Cyan
-Write-Host "  ---------------------------------" -ForegroundColor DarkGray
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "  Hayyan SOC — API Server" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
 # Activate venv
-if (Test-Path ".venv\Scripts\Activate.ps1") {
-    & .\.venv\Scripts\Activate.ps1
-} else {
-    Write-Host "  [!] No .venv found. Run .\setup.ps1 first." -ForegroundColor Red
+if (-not (Test-Path ".\.venv\Scripts\Activate.ps1")) {
+    Write-Host "[ERROR] Virtual environment not found. Run setup.ps1 first." -ForegroundColor Red
     exit 1
 }
 
-# Load port from .env (default 8500)
-$port = 8500
-if (Test-Path ".env") {
-    $envContent = Get-Content ".env" -Raw
-    if ($envContent -match "API_PORT=(\d+)") { $port = $matches[1] }
+& ".\.venv\Scripts\Activate.ps1"
+
+# Check .env
+if (-not (Test-Path ".env")) {
+    Write-Host "[ERROR] .env file not found. Run setup.ps1 first." -ForegroundColor Red
+    exit 1
 }
 
-Write-Host "  [+] UI:      http://localhost:$port" -ForegroundColor Green
-Write-Host "  [+] API:     http://localhost:$port/api/health" -ForegroundColor Green
-Write-Host "  [+] Docs:    http://localhost:$port/docs" -ForegroundColor Green
+Write-Host "[*] Verifying environment..." -ForegroundColor Yellow
+$env_content = Get-Content ".env" | Select-String "GOOGLE_API_KEY"
+if ($env_content -match "your_gemini") {
+    Write-Host "[WARNING] GOOGLE_API_KEY not set in .env" -ForegroundColor Red
+    Write-Host "  Edit .env and add your Gemini API key before running." -ForegroundColor Yellow
+    exit 1
+}
+
+Write-Host "[*] Building knowledge base..." -ForegroundColor Yellow
+python soc_agents/knowledge/build_kb.py
+
 Write-Host ""
-Write-Host "  Press Ctrl+C to stop" -ForegroundColor DarkGray
+Write-Host "[*] Starting FastAPI server on http://0.0.0.0:8500" -ForegroundColor Green
+Write-Host "[*] Press Ctrl+C to stop" -ForegroundColor Yellow
 Write-Host ""
 
-python main.py
+python -m uvicorn soc_agents.api.app:app `
+    --host 0.0.0.0 `
+    --port 8500 `
+    --reload `
+    --log-level info

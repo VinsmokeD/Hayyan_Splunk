@@ -1,23 +1,25 @@
 """
 Hayyan SOC Agent API
-- POST /api/chat          → single-turn (returns full report)
-- WebSocket /ws/chat      → streaming token-by-token
-- GET  /api/health        → Splunk + API health check
-- GET  /api/alerts        → live triggered alerts
-- GET  /api/indexes       → Splunk index stats
+- POST /api/chat          -> single-turn (returns full report)
+- WebSocket /ws/chat      -> streaming token-by-token
+- GET  /api/health        -> Splunk + API health check
+- GET  /api/alerts        -> live triggered alerts
+- GET  /api/indexes       -> Splunk index stats
 """
 import json
+import logging
 import uuid
 from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
 from langchain_core.messages import HumanMessage
 
 from ..agents.soc_graph import soc_graph
-from ..core.splunk_client import SplunkClient
+from ..core.splunk_client import SplunkClient, SplunkConnectionError
+
+log = logging.getLogger(__name__)
 
 app = FastAPI(title="Hayyan SOC Agents", version="1.0.0")
 app.add_middleware(
@@ -38,7 +40,7 @@ async def serve_ui():
     html_path = _UI_PATH / "index.html"
     if html_path.exists():
         return HTMLResponse(html_path.read_text(encoding="utf-8"))
-    return HTMLResponse("<h1>Hayyan SOC Agents</h1><p>UI not found. Start from /api/health</p>")
+    return HTMLResponse("<h1>Hayyan SOC Agents</h1><p>UI not found.</p>")
 
 
 # ── REST Endpoints ───────────────────────────────────────────────────────────
@@ -46,9 +48,11 @@ async def serve_ui():
 @app.get("/api/health")
 async def health():
     splunk_ok = _splunk.ping()
+    scheme = _splunk._scheme or "unknown"
+    host = f"{_splunk._host}:{_splunk._port}"
     return JSONResponse({
         "status": "ok",
-        "splunk": "connected" if splunk_ok else "unreachable — expose port 8089 in Docker",
+        "splunk": f"connected via {scheme}://{host}" if splunk_ok else f"unreachable at {host}",
         "model": "gemini-2.0-flash",
     })
 
@@ -58,8 +62,11 @@ async def get_alerts():
     try:
         alerts = _splunk.get_triggered_alerts()
         return JSONResponse({"alerts": alerts})
+    except SplunkConnectionError as e:
+        return JSONResponse({"error": f"Splunk unreachable: {e}", "alerts": []}, status_code=503)
     except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
+        log.exception("get_alerts failed")
+        return JSONResponse({"error": str(e), "alerts": []}, status_code=500)
 
 
 @app.get("/api/indexes")
@@ -67,8 +74,11 @@ async def get_indexes():
     try:
         stats = _splunk.get_index_stats()
         return JSONResponse({"indexes": stats})
+    except SplunkConnectionError as e:
+        return JSONResponse({"error": f"Splunk unreachable: {e}", "indexes": []}, status_code=503)
     except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
+        log.exception("get_indexes failed")
+        return JSONResponse({"error": str(e), "indexes": []}, status_code=500)
 
 
 @app.post("/api/chat")
@@ -93,6 +103,7 @@ async def chat(body: dict):
             ][-1:],
         })
     except Exception as e:
+        log.exception("chat invoke failed")
         return JSONResponse({"error": str(e)}, status_code=500)
 
 
@@ -117,27 +128,36 @@ async def ws_chat(websocket: WebSocket):
             config = {"configurable": {"thread_id": thread_id}}
             state = {"messages": [HumanMessage(content=message)]}
 
-            await websocket.send_json({"type": "status", "content": "Analyzing request...", "thread_id": thread_id})
+            await websocket.send_json({
+                "type": "status",
+                "content": "Analyzing request...",
+                "thread_id": thread_id,
+            })
 
             try:
-                # Stream updates from the graph
                 async for event in soc_graph.astream(state, config=config, stream_mode="updates"):
                     for node_name, node_output in event.items():
                         if node_name == "triage":
                             next_a = node_output.get("next_agent", "")
                             await websocket.send_json({
                                 "type": "status",
-                                "content": f"Routing to {next_a}...",
+                                "content": f"Routing to {next_a.replace('_', ' ')}...",
                             })
 
-                        elif node_name in ("query_agent", "alert_agent", "investigation_agent", "report_agent"):
+                        elif node_name in (
+                            "query_agent", "alert_agent",
+                            "investigation_agent", "report_agent",
+                        ):
                             await websocket.send_json({
                                 "type": "status",
                                 "content": f"{node_name.replace('_', ' ').title()} working...",
                             })
-                            # Stream any AI message content
                             for msg in node_output.get("messages", []):
-                                if hasattr(msg, "content") and msg.content and not getattr(msg, "tool_calls", None):
+                                if (
+                                    hasattr(msg, "content")
+                                    and msg.content
+                                    and not getattr(msg, "tool_calls", None)
+                                ):
                                     await websocket.send_json({
                                         "type": "partial",
                                         "content": msg.content,
@@ -156,6 +176,7 @@ async def ws_chat(websocket: WebSocket):
                 await websocket.send_json({"type": "done", "thread_id": thread_id})
 
             except Exception as e:
+                log.exception("ws_chat graph error")
                 await websocket.send_json({"type": "error", "content": str(e)})
 
     except WebSocketDisconnect:

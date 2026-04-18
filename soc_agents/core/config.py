@@ -12,11 +12,17 @@ class Settings(BaseSettings):
     splunk_verify_ssl: bool = False
     api_host: str = "0.0.0.0"
     api_port: int = 8500
-    model_name: str = "gemini-2.0-flash"
+    model_name: str = "gemini-2.5-flash"
+    langsmith_api_key: str = ""
+    langsmith_tracing: bool = False
+    langsmith_project: str = "hayyan-ai-soc"
+    chroma_persist_dir: str = "./data/chroma_db"
+    checkpoint_db: str = "./data/checkpoints.sqlite"
 
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+        case_sensitive = False
 
 
 @lru_cache()
