@@ -1,10 +1,13 @@
 """
 Hayyan SOC Agent API
-- POST /api/chat          -> single-turn (returns full report)
-- WebSocket /ws/chat      -> streaming token-by-token
-- GET  /api/health        -> Splunk + API health check
-- GET  /api/alerts        -> live triggered alerts
-- GET  /api/indexes       -> Splunk index stats
+
+Endpoints:
+  GET  /              -> Web UI
+  GET  /api/health    -> Splunk + API health check
+  GET  /api/alerts    -> Live triggered Splunk alerts
+  GET  /api/indexes   -> Splunk index stats
+  POST /api/chat      -> Single-turn chat (returns full report)
+  WS   /ws/chat       -> Streaming chat with live tool + token updates
 """
 import json
 import logging
@@ -14,14 +17,16 @@ from pathlib import Path
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
 from ..agents.soc_graph import soc_graph
+from ..core.config import get_settings
 from ..core.splunk_client import SplunkClient, SplunkConnectionError
 
 log = logging.getLogger(__name__)
+_cfg = get_settings()
 
-app = FastAPI(title="Hayyan SOC Agents", version="1.0.0")
+app = FastAPI(title="Hayyan SOC Agents", version="2.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -53,7 +58,7 @@ async def health():
     return JSONResponse({
         "status": "ok",
         "splunk": f"connected via {scheme}://{host}" if splunk_ok else f"unreachable at {host}",
-        "model": "gemini-2.0-flash",
+        "model": _cfg.model_name,
     })
 
 
@@ -84,7 +89,7 @@ async def get_indexes():
 @app.post("/api/chat")
 async def chat(body: dict):
     message = body.get("message", "")
-    thread_id = body.get("thread_id", str(uuid.uuid4()))
+    thread_id = body.get("thread_id") or str(uuid.uuid4())
     if not message:
         return JSONResponse({"error": "message is required"}, status_code=400)
 
@@ -93,14 +98,12 @@ async def chat(body: dict):
 
     try:
         result = soc_graph.invoke(state, config=config)
+        messages = result.get("messages", [])
+        final = messages[-1] if messages else None
+        final_text = final.content if final and hasattr(final, "content") else ""
         return JSONResponse({
             "thread_id": thread_id,
-            "report": result.get("report", ""),
-            "messages": [
-                {"role": "assistant", "content": m.content}
-                for m in result.get("messages", [])
-                if hasattr(m, "content") and m.content
-            ][-1:],
+            "report": final_text,
         })
     except Exception as e:
         log.exception("chat invoke failed")
@@ -119,7 +122,7 @@ async def ws_chat(websocket: WebSocket):
             raw = await websocket.receive_text()
             data = json.loads(raw)
             message = data.get("message", "")
-            thread_id = data.get("thread_id", thread_id)
+            thread_id = data.get("thread_id") or thread_id
 
             if not message:
                 await websocket.send_json({"type": "error", "content": "empty message"})
@@ -130,46 +133,36 @@ async def ws_chat(websocket: WebSocket):
 
             await websocket.send_json({
                 "type": "status",
-                "content": "Analyzing request...",
+                "content": "Thinking...",
                 "thread_id": thread_id,
             })
 
             try:
                 async for event in soc_graph.astream(state, config=config, stream_mode="updates"):
                     for node_name, node_output in event.items():
-                        if node_name == "triage":
-                            next_a = node_output.get("next_agent", "")
-                            await websocket.send_json({
-                                "type": "status",
-                                "content": f"Routing to {next_a.replace('_', ' ')}...",
-                            })
-
-                        elif node_name in (
-                            "query_agent", "alert_agent",
-                            "investigation_agent", "report_agent",
-                        ):
-                            await websocket.send_json({
-                                "type": "status",
-                                "content": f"{node_name.replace('_', ' ').title()} working...",
-                            })
-                            for msg in node_output.get("messages", []):
-                                if (
-                                    hasattr(msg, "content")
-                                    and msg.content
-                                    and not getattr(msg, "tool_calls", None)
-                                ):
+                        msgs = node_output.get("messages", []) if isinstance(node_output, dict) else []
+                        for msg in msgs:
+                            # Tool call announcement
+                            if isinstance(msg, AIMessage) and getattr(msg, "tool_calls", None):
+                                for tc in msg.tool_calls:
                                     await websocket.send_json({
-                                        "type": "partial",
-                                        "content": msg.content,
-                                        "agent": node_name,
+                                        "type": "tool_call",
+                                        "tool": tc.get("name", "unknown"),
+                                        "args": tc.get("args", {}),
                                     })
-
-                        elif node_name == "synthesize":
-                            report = node_output.get("report", "")
-                            if report:
+                            # Tool result
+                            elif isinstance(msg, ToolMessage):
+                                preview = (msg.content[:200] + "...") if len(msg.content) > 200 else msg.content
+                                await websocket.send_json({
+                                    "type": "tool_result",
+                                    "tool": getattr(msg, "name", "unknown"),
+                                    "content": preview,
+                                })
+                            # Final AI message (no tool calls)
+                            elif isinstance(msg, AIMessage) and msg.content:
                                 await websocket.send_json({
                                     "type": "report",
-                                    "content": report,
+                                    "content": msg.content,
                                     "thread_id": thread_id,
                                 })
 

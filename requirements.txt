@@ -1,39 +1,26 @@
-# Hayyan SOC Agent System - Complete Dependencies
+# Hayyan SOC Agent — Minimal Dependencies
+# Tested with Python 3.11 / 3.12 / 3.14
 
-# ── Core Framework ────────────────────────────────────────────────────────────
-fastapi==0.109.0
-uvicorn[standard]==0.27.0
-python-dotenv==1.0.0
-pydantic==2.6.3
-pydantic-settings==2.2.1
+# Web Framework
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
 
-# ── LLM & Orchestration ───────────────────────────────────────────────────────
-langchain==0.1.13
-langchain-core==0.1.52
-langchain-google-genai==1.0.3
-langgraph==0.0.33
-langchain-community==0.0.35
+# Configuration
+python-dotenv>=1.0.0
+pydantic>=2.6.0
+pydantic-settings>=2.2.0
 
-# ── Knowledge Base ────────────────────────────────────────────────────────────
-chromadb==0.5.0
-sentence-transformers==3.0.0
+# LangChain + LangGraph (AI agent orchestration)
+langchain>=0.3.0
+langchain-core>=0.3.0
+langchain-google-genai>=2.0.0
+langgraph>=0.2.0
+langgraph-prebuilt>=1.0.0
+langgraph-checkpoint>=2.0.0
 
-# ── Splunk Integration ────────────────────────────────────────────────────────
-splunk-sdk==2.1.0
-requests==2.31.0
-urllib3==2.2.0
+# Splunk (pure REST via requests — no SDK needed)
+requests>=2.31.0
+urllib3>=2.0.0
 
-# ── Observability ────────────────────────────────────────────────────────────
-langsmith==0.1.24
-
-# ── UI & Dashboard ───────────────────────────────────────────────────────────
-streamlit==1.35.0
-
-# ── Development & Testing ────────────────────────────────────────────────────
-pytest==7.4.4
-pytest-asyncio==0.23.2
-httpx==0.26.0
-
-# ── Utilities ─────────────────────────────────────────────────────────────────
-aiofiles==23.2.1
-json5==0.9.14
+# HTTP client for tests
+httpx>=0.27.0

@@ -1,6 +1,7 @@
 import json
 from langchain_core.tools import tool
 from ..core.splunk_client import SplunkClient
+from .spl_guardrails import validate_spl, validate_spl_query
 
 _client: SplunkClient | None = None
 
@@ -27,6 +28,9 @@ def run_splunk_query(spl: str, earliest: str = "-24h", latest: str = "now", max_
         latest: Latest time for search (default now)
         max_results: Maximum number of results to return (default 50)
     """
+    ok, reason = validate_spl(spl)
+    if not ok:
+        return f"QUERY BLOCKED by guardrails: {reason}. Revise the query and try again."
     try:
         results = _get_client().run_search(spl, earliest=earliest, latest=latest, max_results=max_results)
         if not results:
@@ -168,6 +172,7 @@ def check_splunk_health() -> str:
 
 ALL_SPLUNK_TOOLS = [
     check_splunk_health,
+    validate_spl_query,
     run_splunk_query,
     get_triggered_alerts,
     get_index_stats,
