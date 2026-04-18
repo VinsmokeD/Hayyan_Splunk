@@ -14,6 +14,7 @@ pydantic-settings>=2.2.0
 langchain>=0.3.0
 langchain-core>=0.3.0
 langchain-google-genai>=2.0.0
+langchain-groq>=0.2.0
 langgraph>=0.2.0
 langgraph-prebuilt>=1.0.0
 langgraph-checkpoint>=2.0.0

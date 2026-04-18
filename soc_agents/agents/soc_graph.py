@@ -11,7 +11,6 @@ Why one agent instead of multiple?
 - Multi-agent handoffs add latency and tokens without better results for
   this single-user, single-alert SOC workflow.
 """
-from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.prebuilt import create_react_agent
 from langgraph.checkpoint.memory import MemorySaver
 
@@ -112,8 +111,19 @@ Suggest 1-2 queries to keep watching this pattern.
 """
 
 
-def _build_llm() -> ChatGoogleGenerativeAI:
+def _build_llm():
     cfg = get_settings()
+    # Prefer Groq if key is set — free tier is 14,400 req/day
+    if cfg.groq_api_key:
+        from langchain_groq import ChatGroq
+        return ChatGroq(
+            model=cfg.model_name,
+            groq_api_key=cfg.groq_api_key,
+            temperature=0,
+            max_tokens=4096,
+        )
+    # Fall back to Gemini
+    from langchain_google_genai import ChatGoogleGenerativeAI
     return ChatGoogleGenerativeAI(
         model=cfg.model_name,
         google_api_key=cfg.google_api_key,

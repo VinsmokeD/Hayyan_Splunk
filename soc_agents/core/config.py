@@ -8,7 +8,14 @@ _ENV_FILE = Path(__file__).resolve().parent.parent.parent / ".env"
 
 
 class Settings(BaseSettings):
+    # LLM provider — set GROQ_API_KEY to use Groq (free, fast)
+    # or GOOGLE_API_KEY to use Gemini
+    groq_api_key: str = ""
     google_api_key: str = ""
+    # Model name: Groq models → llama-3.3-70b-versatile, gemma2-9b-it
+    #             Gemini models → gemini-2.0-flash, gemini-2.5-flash
+    model_name: str = "llama-3.3-70b-versatile"
+
     splunk_host: str = "localhost"
     splunk_port: int = 8088
     splunk_username: str = "admin"
@@ -17,7 +24,6 @@ class Settings(BaseSettings):
     splunk_verify_ssl: bool = False
     api_host: str = "0.0.0.0"
     api_port: int = 8500
-    model_name: str = "gemini-2.5-flash"
     langsmith_api_key: str = ""
     langsmith_tracing: bool = False
     langsmith_project: str = "hayyan-ai-soc"
