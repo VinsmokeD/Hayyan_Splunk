@@ -2,7 +2,7 @@
 
 ## Project Overview
 A full Splunk SIEM home lab built on a single Windows 11 laptop (16GB RAM) using VMware Workstation.
-Phase 2 builds a **LangGraph multi-agent AI SOC assistant** powered by Google Gemini that acts as an autonomous Tier-1 analyst — watching Splunk alerts, investigating across all indexes, mapping to MITRE ATT&CK, and producing incident reports with human-in-the-loop approval before any response action.
+Phase 2 builds a **Production-Ready AI SOC Analyst** (single ReAct agent architecture) powered by Groq or Gemini. It acts as an autonomous Tier-1 analyst — watching Splunk alerts, investigating across all indexes, mapping to MITRE ATT&CK, and producing incident reports.
 
 Built by **Mahmoud**, SOC Intern at Hayyan Horizons.
 
@@ -731,12 +731,15 @@ pytest-asyncio>=0.23.0
 
 ## Implementation Roadmap
 
-### Phase 2.0 — Foundation (Week 1)
-- [ ] `git clone https://github.com/livehybrid/splunk-mcp` → verify it connects to Splunk REST on 8089
-- [ ] Create project structure: `pyproject.toml`, `requirements.txt`, `.env`
-- [ ] Write `scripts/test_splunk_connection.py` — confirm MCP tools are discoverable
-- [ ] Write and unit-test `spl_guardrails.py` — NO LLM needed, pure Python
-- [ ] Verify Gemini API key works: `from langchain_google_genai import ChatGoogleGenerativeAI`
+### Phase 2.0 — Foundation (Week 1) [COMPLETED]
+- [x] `git clone https://github.com/livehybrid/splunk-mcp` → (Integrated into core)
+- [x] Create project structure: `pyproject.toml`, `requirements.txt`, `.env`
+- [x] Write `scripts/test_splunk_connection.py` — confirm connectivity
+- [x] Write and unit-test `spl_guardrails.py` — NO LLM needed, pure Python
+- [x] Verify Gemini API key works
+- [x] Transitioned to ReAct agent architecture (simpler, production-ready)
+- [x] Added Groq provider support (free/fast tier)
+- [x] Created comprehensive DOCUMENTATION.md
 
 ### Phase 2.1 — TriageAgent Standalone (Week 2)
 - [ ] Build `TriageAgent` as isolated LangChain agent (no graph yet)
