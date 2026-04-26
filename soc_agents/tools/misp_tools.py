@@ -15,6 +15,7 @@ import urllib3
 
 from langchain_core.tools import tool
 from ..core.config import get_settings
+from .audit_tools import audit_tool_call
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 log = logging.getLogger(__name__)
@@ -54,94 +55,95 @@ def query_misp_ioc(indicator: str) -> str:
                    Examples: "185.220.101.45", "evil.example.com",
                              "d41d8cd98f00b204e9800998ecf8427e"
     """
-    cfg = get_settings()
-    if not cfg.misp_api_key:
-        return json.dumps({
-            "found": False,
-            "error": "MISP_API_KEY not configured. Add it to .env and restart.",
-            "note": "Deploy MISP: docker compose -f docker-compose.misp.yml up -d",
-        })
-
-    try:
-        url = f"{_misp_base()}/attributes/restSearch"
-        payload = {
-            "returnFormat": "json",
-            "value": indicator,
-            "limit": 20,
-            "includeEventUuid": True,
-            "includeEventTags": True,
-        }
-        resp = requests.post(
-            url,
-            headers=_misp_headers(),
-            json=payload,
-            verify=_misp_verify(),
-            timeout=10,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-
-        attrs = data.get("response", {}).get("Attribute", [])
-        if not attrs:
+    with audit_tool_call("query_misp_ioc", {"indicator": indicator}):
+        cfg = get_settings()
+        if not cfg.misp_api_key:
             return json.dumps({
                 "found": False,
+                "error": "MISP_API_KEY not configured. Add it to .env and restart.",
+                "note": "Deploy MISP: docker compose -f docker-compose.misp.yml up -d",
+            })
+
+        try:
+            url = f"{_misp_base()}/attributes/restSearch"
+            payload = {
+                "returnFormat": "json",
+                "value": indicator,
+                "limit": 20,
+                "includeEventUuid": True,
+                "includeEventTags": True,
+            }
+            resp = requests.post(
+                url,
+                headers=_misp_headers(),
+                json=payload,
+                verify=_misp_verify(),
+                timeout=10,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+
+            attrs = data.get("response", {}).get("Attribute", [])
+            if not attrs:
+                return json.dumps({
+                    "found": False,
+                    "indicator": indicator,
+                    "message": "No MISP intelligence found for this indicator.",
+                })
+
+            # Aggregate across matching attributes
+            events: list[dict] = []
+            tags: set[str] = set()
+            timestamps: list[int] = []
+
+            for attr in attrs:
+                event_info = attr.get("Event", {}).get("info", "Unknown event")
+                event_uuid = attr.get("event_uuid", "")
+                attr_tags = [t.get("name", "") for t in attr.get("Tag", [])]
+                tags.update(attr_tags)
+
+                ts = int(attr.get("timestamp", 0))
+                if ts:
+                    timestamps.append(ts)
+
+                events.append({
+                    "event_info": event_info,
+                    "event_uuid": event_uuid,
+                    "attribute_type": attr.get("type", ""),
+                    "tags": attr_tags,
+                })
+
+            result = {
+                "found": True,
                 "indicator": indicator,
-                "message": "No MISP intelligence found for this indicator.",
+                "match_count": len(attrs),
+                "events": events[:10],  # cap to 10 for token budget
+                "all_tags": sorted(tags),
+                "first_seen": min(timestamps) if timestamps else None,
+                "last_seen": max(timestamps) if timestamps else None,
+                "confidence": "high" if len(attrs) >= 3 else "medium" if len(attrs) >= 1 else "low",
+                "recommendation": (
+                    "KNOWN MALICIOUS — Escalate immediately. This indicator appears in "
+                    f"{len(attrs)} MISP event(s)."
+                ),
+            }
+            return json.dumps(result, indent=2)
+
+        except requests.exceptions.ConnectionError:
+            return json.dumps({
+                "found": False,
+                "error": f"Cannot connect to MISP at {_misp_base()}. Is it running?",
+                "start_cmd": "docker compose -f docker-compose.misp.yml up -d",
             })
-
-        # Aggregate across matching attributes
-        events: list[dict] = []
-        tags: set[str] = set()
-        timestamps: list[int] = []
-
-        for attr in attrs:
-            event_info = attr.get("Event", {}).get("info", "Unknown event")
-            event_uuid = attr.get("event_uuid", "")
-            attr_tags = [t.get("name", "") for t in attr.get("Tag", [])]
-            tags.update(attr_tags)
-
-            ts = int(attr.get("timestamp", 0))
-            if ts:
-                timestamps.append(ts)
-
-            events.append({
-                "event_info": event_info,
-                "event_uuid": event_uuid,
-                "attribute_type": attr.get("type", ""),
-                "tags": attr_tags,
-            })
-
-        result = {
-            "found": True,
-            "indicator": indicator,
-            "match_count": len(attrs),
-            "events": events[:10],  # cap to 10 for token budget
-            "all_tags": sorted(tags),
-            "first_seen": min(timestamps) if timestamps else None,
-            "last_seen": max(timestamps) if timestamps else None,
-            "confidence": "high" if len(attrs) >= 3 else "medium" if len(attrs) >= 1 else "low",
-            "recommendation": (
-                "KNOWN MALICIOUS — Escalate immediately. This indicator appears in "
-                f"{len(attrs)} MISP event(s)."
-            ),
-        }
-        return json.dumps(result, indent=2)
-
-    except requests.exceptions.ConnectionError:
-        return json.dumps({
-            "found": False,
-            "error": f"Cannot connect to MISP at {_misp_base()}. Is it running?",
-            "start_cmd": "docker compose -f docker-compose.misp.yml up -d",
-        })
-    except requests.exceptions.Timeout:
-        return json.dumps({"found": False, "error": "MISP request timed out (10s)."})
-    except requests.exceptions.HTTPError as e:
-        if e.response.status_code == 403:
-            return json.dumps({"found": False, "error": "MISP API key invalid or expired."})
-        return json.dumps({"found": False, "error": f"MISP HTTP error: {e}"})
-    except Exception as e:
-        log.exception("query_misp_ioc failed")
-        return json.dumps({"found": False, "error": str(e)})
+        except requests.exceptions.Timeout:
+            return json.dumps({"found": False, "error": "MISP request timed out (10s)."})
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 403:
+                return json.dumps({"found": False, "error": "MISP API key invalid or expired."})
+            return json.dumps({"found": False, "error": f"MISP HTTP error: {e}"})
+        except Exception as e:
+            log.exception("query_misp_ioc failed")
+            return json.dumps({"found": False, "error": str(e)})
 
 
 # ── Tool 2: get_vuln_posture ──────────────────────────────────────────────────
@@ -162,96 +164,97 @@ def get_vuln_posture(target: Optional[str] = None, min_severity: str = "medium")
         min_severity: Minimum severity to include: "low", "medium", "high", "critical".
                       Default "medium" filters out informational noise.
     """
-    from ..core.splunk_client import SplunkClient
-    from .spl_guardrails import validate_spl
+    with audit_tool_call("get_vuln_posture", {"target": target, "min_severity": min_severity}):
+        from ..core.splunk_client import SplunkClient
+        from .spl_guardrails import validate_spl
 
-    sev_map = {"low": 0, "medium": 1, "high": 2, "critical": 3}
-    sev_order = sev_map.get(min_severity.lower(), 1)
-    sev_filter = " OR ".join(
-        f'severity="{s}"' for s, v in sev_map.items() if v >= sev_order
-    )
+        sev_map = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+        sev_order = sev_map.get(min_severity.lower(), 1)
+        sev_filter = " OR ".join(
+            f'severity="{s}"' for s, v in sev_map.items() if v >= sev_order
+        )
 
-    target_filter = f'target="{target}"' if target else ""
-    where_clause = " ".join(filter(None, [target_filter, f"({sev_filter})"]))
+        target_filter = f'target="{target}"' if target else ""
+        where_clause = " ".join(filter(None, [target_filter, f"({sev_filter})"]))
 
-    spl = (
-        f'index=vuln_scans {where_clause} '
-        f'| stats count as finding_count, '
-        f'  values(cve_id) as cves, '
-        f'  max(cvss_score) as max_cvss, '
-        f'  values(remediation) as remediations '
-        f'  by target, severity, service '
-        f'| sort -max_cvss'
-    )
+        spl = (
+            f'index=vuln_scans {where_clause} '
+            f'| stats count as finding_count, '
+            f'  values(cve_id) as cves, '
+            f'  max(cvss_score) as max_cvss, '
+            f'  values(remediation) as remediations '
+            f'  by target, severity, service '
+            f'| sort -max_cvss'
+        )
 
-    ok, reason = validate_spl(spl)
-    if not ok:
-        return f"SPL validation failed: {reason}"
+        ok, reason = validate_spl(spl)
+        if not ok:
+            return f"SPL validation failed: {reason}"
 
-    try:
-        client = SplunkClient()
-        results = client.run_search(spl, earliest="-30d", max_results=100)
+        try:
+            client = SplunkClient()
+            results = client.run_search(spl, earliest="-30d", max_results=100)
 
-        if not results:
-            scope = f"for {target}" if target else "for all hosts"
+            if not results:
+                scope = f"for {target}" if target else "for all hosts"
+                return json.dumps({
+                    "status": "clean",
+                    "message": (
+                        f"No {min_severity}+ severity findings {scope} in the last 30 days. "
+                        "Either no scans have run yet or the host is well-patched. "
+                        "Run the scanner: ssh rocky@192.168.56.20 "
+                        "sudo /opt/hayyan-scan/orchestrator.sh"
+                    ),
+                    "spl_used": spl,
+                })
+
+            # Aggregate summary
+            host_totals: dict[str, dict] = {}
+            for row in results:
+                tgt = row.get("target", "unknown")
+                if tgt not in host_totals:
+                    host_totals[tgt] = {
+                        "target": tgt,
+                        "findings": [],
+                        "max_cvss": 0.0,
+                        "critical_count": 0,
+                        "high_count": 0,
+                    }
+                sev = row.get("severity", "")
+                max_cvss = float(row.get("max_cvss", 0) or 0)
+                host_totals[tgt]["max_cvss"] = max(host_totals[tgt]["max_cvss"], max_cvss)
+                if sev == "critical":
+                    host_totals[tgt]["critical_count"] += int(row.get("finding_count", 1))
+                elif sev == "high":
+                    host_totals[tgt]["high_count"] += int(row.get("finding_count", 1))
+                host_totals[tgt]["findings"].append({
+                    "severity": sev,
+                    "service": row.get("service", ""),
+                    "cves": row.get("cves", []),
+                    "max_cvss": max_cvss,
+                    "count": row.get("finding_count", 1),
+                    "remediation": row.get("remediations", ["No remediation available"])[0]
+                    if isinstance(row.get("remediations"), list)
+                    else row.get("remediations", ""),
+                })
+
+            hosts = list(host_totals.values())
+            hosts.sort(key=lambda h: h["max_cvss"], reverse=True)
+
             return json.dumps({
-                "status": "clean",
-                "message": (
-                    f"No {min_severity}+ severity findings {scope} in the last 30 days. "
-                    "Either no scans have run yet or the host is well-patched. "
-                    "Run the scanner: ssh rocky@192.168.56.20 "
-                    "sudo /opt/hayyan-scan/orchestrator.sh"
+                "status": "findings",
+                "total_hosts": len(hosts),
+                "hosts": hosts,
+                "risk_summary": (
+                    f"{sum(h['critical_count'] for h in hosts)} critical, "
+                    f"{sum(h['high_count'] for h in hosts)} high findings across "
+                    f"{len(hosts)} host(s)"
                 ),
-                "spl_used": spl,
-            })
+            }, indent=2)
 
-        # Aggregate summary
-        host_totals: dict[str, dict] = {}
-        for row in results:
-            tgt = row.get("target", "unknown")
-            if tgt not in host_totals:
-                host_totals[tgt] = {
-                    "target": tgt,
-                    "findings": [],
-                    "max_cvss": 0.0,
-                    "critical_count": 0,
-                    "high_count": 0,
-                }
-            sev = row.get("severity", "")
-            max_cvss = float(row.get("max_cvss", 0) or 0)
-            host_totals[tgt]["max_cvss"] = max(host_totals[tgt]["max_cvss"], max_cvss)
-            if sev == "critical":
-                host_totals[tgt]["critical_count"] += int(row.get("finding_count", 1))
-            elif sev == "high":
-                host_totals[tgt]["high_count"] += int(row.get("finding_count", 1))
-            host_totals[tgt]["findings"].append({
-                "severity": sev,
-                "service": row.get("service", ""),
-                "cves": row.get("cves", []),
-                "max_cvss": max_cvss,
-                "count": row.get("finding_count", 1),
-                "remediation": row.get("remediations", ["No remediation available"])[0]
-                if isinstance(row.get("remediations"), list)
-                else row.get("remediations", ""),
-            })
-
-        hosts = list(host_totals.values())
-        hosts.sort(key=lambda h: h["max_cvss"], reverse=True)
-
-        return json.dumps({
-            "status": "findings",
-            "total_hosts": len(hosts),
-            "hosts": hosts,
-            "risk_summary": (
-                f"{sum(h['critical_count'] for h in hosts)} critical, "
-                f"{sum(h['high_count'] for h in hosts)} high findings across "
-                f"{len(hosts)} host(s)"
-            ),
-        }, indent=2)
-
-    except Exception as e:
-        log.exception("get_vuln_posture failed")
-        return json.dumps({"error": str(e)})
+        except Exception as e:
+            log.exception("get_vuln_posture failed")
+            return json.dumps({"error": str(e)})
 
 
 # ── Tool 3: create_misp_event ─────────────────────────────────────────────────
@@ -281,119 +284,120 @@ def create_misp_event(
         tlp: Traffic Light Protocol level: "white", "green", "amber", "red".
              Default "amber" — share within your org only.
     """
-    cfg = get_settings()
-    if not cfg.misp_api_key:
-        return json.dumps({
-            "created": False,
-            "error": "MISP_API_KEY not configured. Add it to .env and restart.",
-        })
+    with audit_tool_call("create_misp_event", {"title": title, "tlp": tlp}):
+        cfg = get_settings()
+        if not cfg.misp_api_key:
+            return json.dumps({
+                "created": False,
+                "error": "MISP_API_KEY not configured. Add it to .env and restart.",
+            })
 
-    # Parse IoCs
-    try:
-        ioc_list = json.loads(iocs) if isinstance(iocs, str) else iocs
-    except json.JSONDecodeError as e:
-        return json.dumps({
-            "created": False,
-            "error": f"Invalid IoC JSON: {e}. Format: [{{'type':'ip-dst','value':'1.2.3.4'}}]",
-        })
+        # Parse IoCs
+        try:
+            ioc_list = json.loads(iocs) if isinstance(iocs, str) else iocs
+        except json.JSONDecodeError as e:
+            return json.dumps({
+                "created": False,
+                "error": f"Invalid IoC JSON: {e}. Format: [{{'type':'ip-dst','value':'1.2.3.4'}}]",
+            })
 
-    tlp_tag_map = {
-        "white": "tlp:white",
-        "green": "tlp:green",
-        "amber": "tlp:amber",
-        "red": "tlp:red",
-    }
-    tlp_tag = tlp_tag_map.get(tlp.lower(), "tlp:amber")
-
-    event_payload = {
-        "Event": {
-            "info": title,
-            "distribution": 0,     # 0 = Your organisation only
-            "threat_level_id": 2,  # 2 = Medium
-            "analysis": 1,         # 1 = Ongoing
-            "Tag": [
-                {"name": tlp_tag},
-                {"name": "origin:hayyan-internal"},
-                {"name": "source:ai-soc-agent"},
-            ],
-            "Attribute": [],
+        tlp_tag_map = {
+            "white": "tlp:white",
+            "green": "tlp:green",
+            "amber": "tlp:amber",
+            "red": "tlp:red",
         }
-    }
+        tlp_tag = tlp_tag_map.get(tlp.lower(), "tlp:amber")
 
-    # Add description as free-text attribute
-    event_payload["Event"]["Attribute"].append({
-        "type": "comment",
-        "value": description,
-        "category": "Other",
-        "to_ids": False,
-        "distribution": 0,
-    })
+        event_payload = {
+            "Event": {
+                "info": title,
+                "distribution": 0,     # 0 = Your organisation only
+                "threat_level_id": 2,  # 2 = Medium
+                "analysis": 1,         # 1 = Ongoing
+                "Tag": [
+                    {"name": tlp_tag},
+                    {"name": "origin:hayyan-internal"},
+                    {"name": "source:ai-soc-agent"},
+                ],
+                "Attribute": [],
+            }
+        }
 
-    # Map IoC types to MISP attribute categories
-    ioc_category_map = {
-        "ip-dst": "Network activity",
-        "ip-src": "Network activity",
-        "domain": "Network activity",
-        "url": "Network activity",
-        "md5": "Payload delivery",
-        "sha256": "Payload delivery",
-        "email-src": "Payload delivery",
-        "filename": "Artifacts dropped",
-    }
-
-    for ioc in ioc_list:
-        ioc_type = ioc.get("type", "")
-        ioc_value = ioc.get("value", "")
-        if not ioc_type or not ioc_value:
-            continue
+        # Add description as free-text attribute
         event_payload["Event"]["Attribute"].append({
-            "type": ioc_type,
-            "value": ioc_value,
-            "category": ioc_category_map.get(ioc_type, "Other"),
-            "to_ids": ioc_type in ("ip-dst", "ip-src", "domain", "md5", "sha256"),
+            "type": "comment",
+            "value": description,
+            "category": "Other",
+            "to_ids": False,
             "distribution": 0,
-            "comment": ioc.get("comment", ""),
         })
 
-    try:
-        resp = requests.post(
-            f"{_misp_base()}/events",
-            headers=_misp_headers(),
-            json=event_payload,
-            verify=_misp_verify(),
-            timeout=15,
-        )
-        resp.raise_for_status()
-        result = resp.json()
-        event_id = result.get("Event", {}).get("id", "unknown")
-        event_uuid = result.get("Event", {}).get("uuid", "")
+        # Map IoC types to MISP attribute categories
+        ioc_category_map = {
+            "ip-dst": "Network activity",
+            "ip-src": "Network activity",
+            "domain": "Network activity",
+            "url": "Network activity",
+            "md5": "Payload delivery",
+            "sha256": "Payload delivery",
+            "email-src": "Payload delivery",
+            "filename": "Artifacts dropped",
+        }
 
-        return json.dumps({
-            "created": True,
-            "event_id": event_id,
-            "event_uuid": event_uuid,
-            "title": title,
-            "ioc_count": len(ioc_list),
-            "tlp": tlp_tag,
-            "url": f"{_misp_base()}/events/view/{event_id}",
-            "message": (
-                f"MISP event #{event_id} created with {len(ioc_list)} IoC(s). "
-                f"View at {_misp_base()}/events/view/{event_id}"
-            ),
-        }, indent=2)
+        for ioc in ioc_list:
+            ioc_type = ioc.get("type", "")
+            ioc_value = ioc.get("value", "")
+            if not ioc_type or not ioc_value:
+                continue
+            event_payload["Event"]["Attribute"].append({
+                "type": ioc_type,
+                "value": ioc_value,
+                "category": ioc_category_map.get(ioc_type, "Other"),
+                "to_ids": ioc_type in ("ip-dst", "ip-src", "domain", "md5", "sha256"),
+                "distribution": 0,
+                "comment": ioc.get("comment", ""),
+            })
 
-    except requests.exceptions.ConnectionError:
-        return json.dumps({
-            "created": False,
-            "error": f"Cannot connect to MISP at {_misp_base()}. Is it running?",
-        })
-    except requests.exceptions.HTTPError as e:
-        if e.response.status_code == 403:
-            return json.dumps({"created": False, "error": "MISP API key invalid or expired."})
-        return json.dumps({"created": False, "error": f"MISP HTTP error: {e}"})
-    except Exception as e:
-        log.exception("create_misp_event failed")
-        return json.dumps({"created": False, "error": str(e)})
+        try:
+            resp = requests.post(
+                f"{_misp_base()}/events",
+                headers=_misp_headers(),
+                json=event_payload,
+                verify=_misp_verify(),
+                timeout=15,
+            )
+            resp.raise_for_status()
+            result = resp.json()
+            event_id = result.get("Event", {}).get("id", "unknown")
+            event_uuid = result.get("Event", {}).get("uuid", "")
+
+            return json.dumps({
+                "created": True,
+                "event_id": event_id,
+                "event_uuid": event_uuid,
+                "title": title,
+                "ioc_count": len(ioc_list),
+                "tlp": tlp_tag,
+                "url": f"{_misp_base()}/events/view/{event_id}",
+                "message": (
+                    f"MISP event #{event_id} created with {len(ioc_list)} IoC(s). "
+                    f"View at {_misp_base()}/events/view/{event_id}"
+                ),
+            }, indent=2)
+
+        except requests.exceptions.ConnectionError:
+            return json.dumps({
+                "created": False,
+                "error": f"Cannot connect to MISP at {_misp_base()}. Is it running?",
+            })
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 403:
+                return json.dumps({"created": False, "error": "MISP API key invalid or expired."})
+            return json.dumps({"created": False, "error": f"MISP HTTP error: {e}"})
+        except Exception as e:
+            log.exception("create_misp_event failed")
+            return json.dumps({"created": False, "error": str(e)})
 
 
 ALL_MISP_TOOLS = [

@@ -5,6 +5,8 @@ from .spl_guardrails import validate_spl, validate_spl_query
 
 _client: SplunkClient | None = None
 
+from .audit_tools import audit_tool_call
+
 
 def _get_client() -> SplunkClient:
     global _client
@@ -28,16 +30,17 @@ def run_splunk_query(spl: str, earliest: str = "-24h", latest: str = "now", max_
         latest: Latest time for search (default now)
         max_results: Maximum number of results to return (default 50)
     """
-    ok, reason = validate_spl(spl)
-    if not ok:
-        return f"QUERY BLOCKED by guardrails: {reason}. Revise the query and try again."
-    try:
-        results = _get_client().run_search(spl, earliest=earliest, latest=latest, max_results=max_results)
-        if not results:
-            return "Query returned 0 results."
-        return json.dumps(results, indent=2)
-    except Exception as e:
-        return f"Splunk query error: {str(e)}"
+    with audit_tool_call("run_splunk_query", {"spl": spl, "earliest": earliest, "latest": latest}):
+        ok, reason = validate_spl(spl)
+        if not ok:
+            return f"QUERY BLOCKED by guardrails: {reason}. Revise the query and try again."
+        try:
+            results = _get_client().run_search(spl, earliest=earliest, latest=latest, max_results=max_results)
+            if not results:
+                return "Query returned 0 results."
+            return json.dumps(results, indent=2)
+        except Exception as e:
+            return f"Splunk query error: {str(e)}"
 
 
 @tool
@@ -47,13 +50,14 @@ def get_triggered_alerts() -> str:
     Returns alert name, trigger time, severity, and count of triggers.
     Use this to understand what the SIEM has flagged as suspicious activity.
     """
-    try:
-        alerts = _get_client().get_triggered_alerts()
-        if not alerts:
-            return "No triggered alerts at this time."
-        return json.dumps(alerts, indent=2)
-    except Exception as e:
-        return f"Error fetching alerts: {str(e)}"
+    with audit_tool_call("get_triggered_alerts", {}):
+        try:
+            alerts = _get_client().get_triggered_alerts()
+            if not alerts:
+                return "No triggered alerts at this time."
+            return json.dumps(alerts, indent=2)
+        except Exception as e:
+            return f"Error fetching alerts: {str(e)}"
 
 
 @tool
