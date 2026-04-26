@@ -1,0 +1,59 @@
+# ── Target Configuration for Hayyan SOC Scanner ──────────────────────────────
+# /opt/hayyan-scan/config/targets.yaml
+#
+# AUTHORIZED SCANNER TARGETS ONLY.
+# Rocky Linux (192.168.56.20) is the authorized scanner per SOC policy.
+# Any scan from other hosts should be treated as a rogue scan event.
+#
+# Adjust targets to match your current lab topology.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Nuclei targets ────────────────────────────────────────────────────────────
+# Nuclei scans web/network services at these addresses.
+# Use CIDR for range scanning, or individual IPs/hostnames.
+nuclei_targets:
+  # Windows DC01 — limited scan (avoid noisy DC probing)
+  - http://192.168.56.10
+  - https://192.168.56.10
+  # Rocky Linux web server — full coverage
+  - http://192.168.56.20
+  - https://192.168.56.20
+  # Self-scan SOC tooling (show operational maturity)
+  - https://localhost:8443   # MISP
+  - http://localhost:8080    # Splunk Web
+
+# Nuclei scan profile settings
+nuclei_config:
+  severity:
+    - medium
+    - high
+    - critical
+  # Templates to explicitly exclude (to avoid DoS on lab)
+  exclude_tags:
+    - dos
+    - fuzz
+    - intrusive
+  # Rate limit (requests/second) — keep low for lab stability
+  rate_limit: 50
+  timeout_seconds: 10
+
+# ── Trivy targets ─────────────────────────────────────────────────────────────
+# Trivy scans local filesystem + Docker containers on this host.
+# Add remote hosts only if SSH-based Trivy scanning is configured.
+trivy_targets:
+  filesystem:
+    - /                          # Local Rocky Linux filesystem
+  docker_containers: auto        # 'auto' = scan all running containers
+  docker_images: []              # Explicit images to scan (leave empty for auto)
+
+# ── Scan schedule (for documentation — enforced by systemd timer) ──────────
+schedule:
+  full_scan_cron: "30 2 * * *"   # Daily at 02:30 Rocky local time
+  nuclei_only_cron: "0 12 * * *" # Midday Nuclei-only check
+  authorized_scanner_ip: "192.168.56.20"  # Rocky Linux — the authorized scanner
+
+# ── MISP mirroring threshold ──────────────────────────────────────────────────
+misp_mirror:
+  enabled: true
+  min_cvss_score: 7.0            # Only mirror CVSS >= 7.0 (High/Critical)
+  max_events_per_scan: 10        # Rate-cap MISP event creation

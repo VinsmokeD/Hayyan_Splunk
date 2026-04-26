@@ -3,18 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Hayyan SOC — AI Intelligence Platform</title>
-  <meta name="description" content="Enterprise-grade AI-powered Security Operations Center for Hayyan Horizons. LangGraph multi-agent Splunk analysis." />
+  <title>Hayyan SOC — AI Security Platform</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <!-- marked.js for markdown rendering -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <!-- highlight.js for code block syntax highlighting -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 
   <style>
-    /* ── Reset & Base ─────────────────────────────────────────────────── */
+    /* ── Reset & Variables ─────────────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
@@ -38,17 +35,16 @@
       --yellow-soft:  rgba(255,214,0,.12);
       --purple:       #a855f7;
 
-      --text-primary: #e2eaf4;
+      --text-primary:   #e2eaf4;
       --text-secondary: #7f9aaf;
-      --text-muted:   #445566;
+      --text-muted:     #445566;
 
-      --font-sans:   'Inter', system-ui, sans-serif;
-      --font-mono:   'JetBrains Mono', 'Fira Code', monospace;
+      --font-sans: 'Inter', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 
       --radius-sm: 6px;
       --radius-md: 10px;
       --radius-lg: 16px;
-
       --transition: 0.18s ease;
     }
 
@@ -62,48 +58,54 @@
       flex-direction: column;
     }
 
-    /* ── Layout Shell ─────────────────────────────────────────────────── */
+    /* ── Layout ────────────────────────────────────────────────────────── */
     .shell {
       display: grid;
-      grid-template-columns: 260px 1fr 280px;
-      grid-template-rows: 56px 1fr;
+      grid-template-columns: 248px 1fr 272px;
+      grid-template-rows: 52px 1fr;
       grid-template-areas:
         "header header header"
-        "sidebar  main   right";
+        "sidebar main right";
       height: 100vh;
       overflow: hidden;
     }
 
-    /* ── Topbar ───────────────────────────────────────────────────────── */
+    /* ── Topbar ────────────────────────────────────────────────────────── */
     .topbar {
       grid-area: header;
       display: flex;
       align-items: center;
-      padding: 0 20px;
+      padding: 0 18px;
       background: var(--bg-surface);
       border-bottom: 1px solid var(--border);
-      gap: 16px;
+      gap: 12px;
       z-index: 10;
     }
 
     .logo {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 9px;
       font-weight: 700;
-      font-size: 15px;
+      font-size: 14px;
       letter-spacing: -0.3px;
       white-space: nowrap;
     }
 
     .logo-icon {
-      width: 30px;
-      height: 30px;
+      width: 28px;
+      height: 28px;
       background: linear-gradient(135deg, var(--accent), var(--purple));
-      border-radius: 8px;
+      border-radius: 7px;
       display: grid;
       place-items: center;
-      font-size: 16px;
+      font-size: 14px;
+    }
+
+    .topbar-div {
+      width: 1px;
+      height: 20px;
+      background: var(--border);
     }
 
     .topbar-spacer { flex: 1; }
@@ -118,7 +120,8 @@
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: 20px;
-      padding: 4px 12px;
+      padding: 4px 11px;
+      white-space: nowrap;
     }
 
     .status-dot {
@@ -127,28 +130,30 @@
       border-radius: 50%;
       background: var(--green);
       box-shadow: 0 0 6px var(--green);
-      animation: pulse 2s infinite;
+      flex-shrink: 0;
     }
 
-    .status-dot.offline { background: var(--red); box-shadow: 0 0 6px var(--red); animation: none; }
-    .status-dot.connecting { background: var(--yellow); box-shadow: 0 0 6px var(--yellow); }
+    .status-dot.pulse { animation: dotPulse 2s infinite; }
+    .status-dot.offline { background: var(--red); box-shadow: 0 0 6px var(--red); }
+    .status-dot.warn { background: var(--yellow); box-shadow: 0 0 6px var(--yellow); }
 
-    @keyframes pulse {
+    @keyframes dotPulse {
       0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
+      50% { opacity: 0.35; }
     }
 
     .model-badge {
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 600;
-      padding: 4px 10px;
-      border-radius: 6px;
+      padding: 3px 9px;
+      border-radius: 5px;
       background: linear-gradient(135deg, rgba(168,85,247,.15), rgba(29,140,248,.15));
       border: 1px solid rgba(168,85,247,.3);
       color: var(--purple);
+      white-space: nowrap;
     }
 
-    /* ── Left Sidebar ─────────────────────────────────────────────────── */
+    /* ── Left Sidebar ──────────────────────────────────────────────────── */
     .sidebar {
       grid-area: sidebar;
       background: var(--bg-surface);
@@ -158,9 +163,9 @@
       overflow: hidden;
     }
 
-    .sidebar-section {
-      padding: 14px 16px 10px;
-      font-size: 10px;
+    .sidebar-label {
+      padding: 12px 14px 8px;
+      font-size: 9.5px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 1.2px;
@@ -168,15 +173,15 @@
     }
 
     .agent-card {
-      margin: 0 10px 4px;
-      padding: 10px 12px;
+      margin: 0 8px 3px;
+      padding: 9px 11px;
       border-radius: var(--radius-md);
       border: 1px solid transparent;
       cursor: pointer;
       transition: var(--transition);
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 9px;
     }
 
     .agent-card:hover {
@@ -190,19 +195,19 @@
     }
 
     .agent-icon {
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
+      width: 30px;
+      height: 30px;
+      border-radius: 7px;
       display: grid;
       place-items: center;
-      font-size: 15px;
+      font-size: 14px;
       flex-shrink: 0;
     }
 
     .agent-meta { flex: 1; min-width: 0; }
 
     .agent-name {
-      font-size: 12px;
+      font-size: 11.5px;
       font-weight: 600;
       color: var(--text-primary);
       white-space: nowrap;
@@ -216,20 +221,23 @@
       margin-top: 1px;
     }
 
-    .divider {
+    .sidebar-divider {
       height: 1px;
       background: var(--border);
-      margin: 10px 0;
+      margin: 8px 0;
     }
 
-    .quick-prompts-list {
+    .quick-list {
       flex: 1;
       overflow-y: auto;
-      padding: 0 10px 10px;
+      padding: 0 8px 10px;
     }
 
-    .quick-prompt {
-      padding: 8px 12px;
+    .quick-list::-webkit-scrollbar { width: 3px; }
+    .quick-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    .quick-item {
+      padding: 7px 10px;
       font-size: 11px;
       color: var(--text-secondary);
       border-radius: var(--radius-sm);
@@ -242,15 +250,15 @@
       line-height: 1.4;
     }
 
-    .quick-prompt:hover {
+    .quick-item:hover {
       background: var(--bg-hover);
       border-left-color: var(--accent);
       color: var(--text-primary);
     }
 
-    .quick-prompt-icon { font-size: 13px; flex-shrink: 0; margin-top: 1px; }
+    .quick-item-icon { font-size: 12px; flex-shrink: 0; margin-top: 1px; }
 
-    /* ── Main Chat ────────────────────────────────────────────────────── */
+    /* ── Main Chat ─────────────────────────────────────────────────────── */
     .main {
       grid-area: main;
       display: flex;
@@ -259,67 +267,64 @@
       position: relative;
     }
 
-    /* Scanning grid background */
     .main::before {
       content: '';
       position: absolute;
       inset: 0;
       background-image:
-        linear-gradient(rgba(29,140,248,.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(29,140,248,.03) 1px, transparent 1px);
+        linear-gradient(rgba(29,140,248,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(29,140,248,.025) 1px, transparent 1px);
       background-size: 32px 32px;
       pointer-events: none;
       z-index: 0;
     }
 
-    .chat-messages {
+    .chat-msgs {
       flex: 1;
       overflow-y: auto;
-      padding: 24px 28px;
+      padding: 22px 26px;
       display: flex;
       flex-direction: column;
-      gap: 18px;
+      gap: 16px;
       position: relative;
       z-index: 1;
     }
 
-    /* Scrollbar */
-    .chat-messages::-webkit-scrollbar { width: 5px; }
-    .chat-messages::-webkit-scrollbar-track { background: transparent; }
-    .chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .chat-msgs::-webkit-scrollbar { width: 4px; }
+    .chat-msgs::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
-    /* Welcome hero */
-    .welcome-hero {
+    /* ── Welcome ───────────────────────────────────────────────────────── */
+    .welcome {
       text-align: center;
-      padding: 60px 20px 40px;
+      padding: 48px 20px 32px;
     }
 
     .welcome-icon {
-      width: 64px;
-      height: 64px;
+      width: 60px;
+      height: 60px;
       background: linear-gradient(135deg, var(--accent), var(--purple));
-      border-radius: 18px;
+      border-radius: 16px;
       display: grid;
       place-items: center;
-      font-size: 30px;
-      margin: 0 auto 20px;
-      box-shadow: 0 0 40px rgba(29,140,248,.3), 0 0 80px rgba(168,85,247,.15);
+      font-size: 28px;
+      margin: 0 auto 18px;
+      box-shadow: 0 0 40px rgba(29,140,248,.25), 0 0 80px rgba(168,85,247,.12);
     }
 
-    .welcome-hero h1 {
-      font-size: 22px;
+    .welcome h1 {
+      font-size: 20px;
       font-weight: 700;
       background: linear-gradient(135deg, #e2eaf4, var(--accent), var(--purple));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
 
-    .welcome-hero p {
-      font-size: 13px;
+    .welcome p {
+      font-size: 12.5px;
       color: var(--text-secondary);
-      max-width: 480px;
+      max-width: 440px;
       margin: 0 auto;
       line-height: 1.6;
     }
@@ -327,16 +332,16 @@
     .welcome-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      max-width: 520px;
-      margin: 28px auto 0;
+      gap: 9px;
+      max-width: 500px;
+      margin: 24px auto 0;
     }
 
     .welcome-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: var(--radius-md);
-      padding: 14px;
+      padding: 13px;
       cursor: pointer;
       transition: var(--transition);
       text-align: left;
@@ -346,76 +351,65 @@
       border-color: var(--accent);
       background: var(--bg-hover);
       transform: translateY(-1px);
-      box-shadow: 0 4px 20px rgba(29,140,248,.1);
+      box-shadow: 0 4px 18px rgba(29,140,248,.08);
     }
 
-    .welcome-card-icon { font-size: 18px; margin-bottom: 6px; }
-    .welcome-card-title { font-size: 12px; font-weight: 600; color: var(--text-primary); }
-    .welcome-card-desc { font-size: 11px; color: var(--text-muted); margin-top: 3px; line-height: 1.4; }
+    .wc-icon { font-size: 17px; margin-bottom: 5px; }
+    .wc-title { font-size: 11.5px; font-weight: 600; color: var(--text-primary); }
+    .wc-desc { font-size: 10.5px; color: var(--text-muted); margin-top: 3px; line-height: 1.35; }
 
-    /* Messages */
+    /* ── Messages ──────────────────────────────────────────────────────── */
     .msg {
       display: flex;
-      gap: 12px;
-      animation: fadeSlideIn 0.25s ease;
+      gap: 11px;
+      animation: fadeIn 0.22s ease;
     }
 
-    @keyframes fadeSlideIn {
-      from { opacity: 0; transform: translateY(6px); }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
       to   { opacity: 1; transform: translateY(0); }
     }
 
     .msg-avatar {
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
+      width: 30px;
+      height: 30px;
+      border-radius: 7px;
       display: grid;
       place-items: center;
-      font-size: 14px;
+      font-size: 13px;
       flex-shrink: 0;
+      margin-top: 1px;
     }
 
-    .msg-avatar.user { background: linear-gradient(135deg, var(--accent), #0056d2); }
-    .msg-avatar.agent { background: linear-gradient(135deg, var(--purple), #6366f1); }
+    .msg-avatar.user   { background: linear-gradient(135deg, var(--accent), #0056d2); }
+    .msg-avatar.agent  { background: linear-gradient(135deg, var(--purple), #6366f1); }
 
     .msg-body { flex: 1; min-width: 0; }
 
     .msg-header {
       display: flex;
       align-items: center;
-      gap: 8px;
-      margin-bottom: 6px;
+      gap: 7px;
+      margin-bottom: 5px;
     }
 
-    .msg-role {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--text-primary);
-    }
+    .msg-role { font-size: 11.5px; font-weight: 600; }
+    .msg-ts   { font-size: 10px; color: var(--text-muted); }
 
-    .msg-ts {
-      font-size: 10px;
-      color: var(--text-muted);
-    }
-
-    .msg-agent-tag {
+    .msg-tag {
       font-size: 9px;
       font-weight: 700;
-      padding: 2px 7px;
+      padding: 2px 6px;
       border-radius: 4px;
       text-transform: uppercase;
-      letter-spacing: 0.6px;
+      letter-spacing: 0.5px;
     }
 
-    .tag-query     { background: rgba(29,140,248,.15); color: var(--accent); }
-    .tag-alert     { background: rgba(245,54,92,.15); color: var(--red); }
-    .tag-invest    { background: rgba(168,85,247,.15); color: var(--purple); }
-    .tag-report    { background: rgba(45,206,137,.15); color: var(--green); }
-    .tag-triage    { background: var(--yellow-soft); color: var(--yellow); }
-    .tag-synth     { background: var(--green-soft); color: var(--green); }
+    .tag-report  { background: var(--green-soft); color: var(--green); }
+    .tag-query   { background: var(--accent-soft); color: var(--accent); }
 
     .msg-content {
-      font-size: 13px;
+      font-size: 12.5px;
       line-height: 1.65;
       color: var(--text-primary);
     }
@@ -424,138 +418,188 @@
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: var(--radius-md);
-      padding: 10px 14px;
+      padding: 9px 13px;
     }
 
-    /* Markdown overrides inside agent messages */
+    /* Markdown inside agent messages */
     .msg-content h1, .msg-content h2, .msg-content h3 {
       color: var(--text-primary);
-      margin: 14px 0 6px;
-      font-size: 14px;
+      margin: 12px 0 5px;
       font-weight: 700;
     }
-    .msg-content h1 { font-size: 16px; }
-    .msg-content h2 { font-size: 14px; color: var(--accent); }
-
-    .msg-content p { margin-bottom: 8px; }
-
-    .msg-content ul, .msg-content ol {
-      padding-left: 18px;
-      margin-bottom: 8px;
-    }
-
+    .msg-content h1 { font-size: 15px; }
+    .msg-content h2 { font-size: 13px; color: var(--accent); }
+    .msg-content h3 { font-size: 12px; }
+    .msg-content p  { margin-bottom: 7px; }
+    .msg-content ul, .msg-content ol { padding-left: 16px; margin-bottom: 7px; }
     .msg-content li { margin-bottom: 3px; }
+    .msg-content strong { font-weight: 600; }
+    .msg-content em    { color: var(--text-secondary); }
 
     .msg-content table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 12px;
-      margin: 10px 0;
+      font-size: 11.5px;
+      margin: 9px 0;
       border-radius: var(--radius-sm);
       overflow: hidden;
     }
-
     .msg-content th {
       background: var(--bg-hover);
-      padding: 6px 10px;
+      padding: 5px 9px;
       text-align: left;
       font-weight: 600;
       color: var(--accent);
       border-bottom: 1px solid var(--border);
     }
-
     .msg-content td {
-      padding: 6px 10px;
+      padding: 5px 9px;
       border-bottom: 1px solid var(--border);
     }
-
     .msg-content tr:hover td { background: var(--bg-hover); }
 
     .msg-content code {
       font-family: var(--font-mono);
-      font-size: 11px;
+      font-size: 10.5px;
       background: var(--bg-base);
       padding: 1px 5px;
       border-radius: 4px;
       color: var(--accent);
     }
-
     .msg-content pre {
       background: var(--bg-base);
       border: 1px solid var(--border);
       border-radius: var(--radius-md);
-      padding: 14px;
+      padding: 12px;
       overflow-x: auto;
-      margin: 10px 0;
+      margin: 8px 0;
     }
-
     .msg-content pre code {
       background: none;
       padding: 0;
       color: var(--text-primary);
-      font-size: 12px;
+      font-size: 11.5px;
     }
 
-    .msg-content strong { color: var(--text-primary); font-weight: 600; }
-    .msg-content em { color: var(--text-secondary); }
+    /* ── Tool Steps (AI thinking visualization) ──────────────────────── */
+    .steps-wrapper {
+      margin-left: 41px;
+      border-left: 2px solid var(--border);
+      padding: 3px 0 3px 12px;
+      animation: fadeIn 0.2s ease;
+    }
 
-    /* Status / typing indicator */
-    .status-msg {
+    .tool-step {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 7px;
+      padding: 3px 0;
+      font-size: 10.5px;
+      font-family: var(--font-mono);
+      animation: fadeIn 0.18s ease;
+    }
+
+    .ts-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: var(--border);
+      transition: background 0.3s;
+    }
+
+    .tool-step.running .ts-dot {
+      background: var(--accent);
+      box-shadow: 0 0 5px var(--accent);
+      animation: dotPulse 0.9s infinite;
+    }
+
+    .tool-step.done .ts-dot { background: var(--green); }
+    .tool-step.err  .ts-dot { background: var(--red); }
+
+    .ts-label {
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .tool-step.running .ts-label { color: var(--accent); }
+    .tool-step.done    .ts-label { color: var(--text-secondary); }
+    .tool-step.err     .ts-label { color: var(--red); }
+
+    .ts-args {
+      color: var(--text-muted);
+      font-size: 9.5px;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      opacity: 0.7;
+    }
+
+    .ts-result {
+      margin-left: auto;
+      color: var(--green);
+      font-size: 9.5px;
+      max-width: 110px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .tool-step.running .ts-result { color: var(--text-muted); }
+    .tool-step.err     .ts-result { color: var(--red); }
+
+    /* ── Status indicator (typing) ─────────────────────────────────────── */
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 9px;
       padding: 8px 12px;
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: var(--radius-md);
-      font-size: 12px;
+      font-size: 11.5px;
       color: var(--text-secondary);
-      max-width: 320px;
-      animation: fadeSlideIn 0.2s ease;
+      max-width: 300px;
+      animation: fadeIn 0.2s ease;
     }
 
-    .typing-dots {
-      display: flex;
-      gap: 3px;
-    }
-
+    .typing-dots { display: flex; gap: 3px; }
     .typing-dots span {
-      width: 5px;
-      height: 5px;
+      width: 4px; height: 4px;
       background: var(--accent);
       border-radius: 50%;
-      animation: bounce 1.2s infinite;
+      animation: bounce 1.1s infinite;
     }
-
-    .typing-dots span:nth-child(2) { animation-delay: 0.15s; }
-    .typing-dots span:nth-child(3) { animation-delay: 0.3s; }
+    .typing-dots span:nth-child(2) { animation-delay: 0.14s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.28s; }
 
     @keyframes bounce {
       0%, 80%, 100% { transform: translateY(0); opacity: 0.5; }
-      40% { transform: translateY(-4px); opacity: 1; }
+      40%           { transform: translateY(-4px); opacity: 1; }
     }
 
-    /* ── Input Bar ────────────────────────────────────────────────────── */
+    /* ── Input Bar ─────────────────────────────────────────────────────── */
     .input-area {
-      padding: 16px 28px 20px;
+      padding: 14px 24px 18px;
       background: var(--bg-surface);
       border-top: 1px solid var(--border);
       position: relative;
       z-index: 2;
     }
 
-    .input-wrapper {
+    .input-wrap {
       display: flex;
       align-items: flex-end;
-      gap: 10px;
+      gap: 9px;
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
-      padding: 12px 14px 12px 16px;
+      padding: 11px 12px 11px 15px;
       transition: border-color var(--transition), box-shadow var(--transition);
     }
 
-    .input-wrapper:focus-within {
+    .input-wrap:focus-within {
       border-color: var(--accent);
       box-shadow: 0 0 0 3px var(--accent-glow);
     }
@@ -567,20 +611,19 @@
       outline: none;
       color: var(--text-primary);
       font-family: var(--font-sans);
-      font-size: 13px;
+      font-size: 12.5px;
       resize: none;
-      max-height: 140px;
+      max-height: 130px;
       line-height: 1.5;
     }
 
     #chat-input::placeholder { color: var(--text-muted); }
 
     .send-btn {
-      width: 34px;
-      height: 34px;
+      width: 32px; height: 32px;
       background: linear-gradient(135deg, var(--accent), #0056d2);
       border: none;
-      border-radius: 8px;
+      border-radius: 7px;
       cursor: pointer;
       display: grid;
       place-items: center;
@@ -588,17 +631,15 @@
       transition: var(--transition);
       color: white;
     }
-
-    .send-btn:hover { filter: brightness(1.15); transform: scale(1.05); }
-    .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-
-    .send-btn svg { width: 16px; height: 16px; }
+    .send-btn:hover { filter: brightness(1.15); transform: scale(1.04); }
+    .send-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+    .send-btn svg { width: 14px; height: 14px; }
 
     .input-hints {
       display: flex;
       align-items: center;
-      gap: 6px;
-      margin-top: 8px;
+      gap: 5px;
+      margin-top: 7px;
       font-size: 10px;
       color: var(--text-muted);
     }
@@ -606,13 +647,27 @@
     .hint-key {
       background: var(--bg-hover);
       border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 1px 5px;
+      border-radius: 3px;
+      padding: 1px 4px;
       font-family: var(--font-mono);
-      font-size: 10px;
+      font-size: 9.5px;
     }
 
-    /* ── Right Panel ──────────────────────────────────────────────────── */
+    /* ── Error ─────────────────────────────────────────────────────────── */
+    .error-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 13px;
+      background: var(--red-soft);
+      border: 1px solid rgba(245,54,92,.3);
+      border-radius: var(--radius-md);
+      font-size: 12px;
+      color: var(--red);
+      animation: fadeIn 0.2s ease;
+    }
+
+    /* ── Right Panel ───────────────────────────────────────────────────── */
     .right-panel {
       grid-area: right;
       background: var(--bg-surface);
@@ -622,47 +677,228 @@
       overflow: hidden;
     }
 
-    .panel-tab-bar {
+    .tab-bar {
       display: flex;
       border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
     }
 
-    .panel-tab {
+    .tab-btn {
       flex: 1;
-      padding: 10px 0;
+      padding: 10px 4px;
       text-align: center;
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 600;
       color: var(--text-muted);
       cursor: pointer;
       border-bottom: 2px solid transparent;
       transition: var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
     }
 
-    .panel-tab.active {
+    .tab-btn.active {
       color: var(--accent);
       border-bottom-color: var(--accent);
     }
 
-    .panel-content {
-      flex: 1;
-      overflow-y: auto;
-      padding: 14px;
+    .alert-count-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 16px;
+      height: 16px;
+      background: var(--red);
+      color: white;
+      border-radius: 8px;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 0 4px;
     }
 
-    .panel-content::-webkit-scrollbar { width: 4px; }
-    .panel-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .panel-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+    }
 
-    /* Alert items */
-    .alert-item {
+    .panel-body::-webkit-scrollbar { width: 3px; }
+    .panel-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* ── Stat card (Threat Intel panel) ────────────────────────────────── */
+    .stat-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: var(--radius-md);
-      padding: 12px;
-      margin-bottom: 8px;
-      transition: var(--transition);
-      cursor: pointer;
+      padding: 11px 13px;
+      margin-bottom: 7px;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+    }
+
+    .stat-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      font-size: 15px;
+      flex-shrink: 0;
+    }
+
+    .stat-body { flex: 1; min-width: 0; }
+
+    .stat-value {
+      font-size: 19px;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.1;
+    }
+
+    .stat-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 1px;
+    }
+
+    /* ── Vuln host row ──────────────────────────────────────────────────── */
+    .vuln-row {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
       border-left: 3px solid transparent;
+      border-radius: var(--radius-md);
+      padding: 9px 11px;
+      margin-bottom: 6px;
+      cursor: pointer;
+      transition: var(--transition);
+      animation: fadeIn 0.2s ease;
+    }
+
+    .vuln-row:hover { background: var(--bg-hover); }
+    .vuln-row.critical { border-left-color: var(--red); }
+    .vuln-row.high     { border-left-color: var(--orange); }
+    .vuln-row.medium   { border-left-color: var(--yellow); }
+
+    .vuln-host {
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 5px;
+    }
+
+    .vuln-bars {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+
+    .vuln-pill {
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+
+    .vuln-pill.critical { background: var(--red-soft);  color: var(--red); }
+    .vuln-pill.high     { background: rgba(251,99,64,.15); color: var(--orange); }
+    .vuln-pill.medium   { background: var(--yellow-soft); color: var(--yellow); }
+
+    .vuln-cvss {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* ── Section header inside panel ───────────────────────────────────── */
+    .panel-section-hdr {
+      font-size: 9.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin: 10px 0 6px;
+    }
+
+    /* ── MISP status pill in topbar ─────────────────────────────────────── */
+    .misp-badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 9px;
+      border-radius: 5px;
+      background: rgba(45,206,137,.1);
+      border: 1px solid rgba(45,206,137,.3);
+      color: var(--green);
+      white-space: nowrap;
+      cursor: default;
+    }
+
+    .misp-badge.offline {
+      background: rgba(245,54,92,.08);
+      border-color: rgba(245,54,92,.25);
+      color: var(--red);
+    }
+
+    .misp-badge.warn {
+      background: var(--yellow-soft);
+      border-color: rgba(255,214,0,.3);
+      color: var(--yellow);
+    }
+
+    /* Refresh bar inside panel */
+    .refresh-bar {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 10px;
+      flex-shrink: 0;
+    }
+
+    .refresh-btn {
+      flex: 1;
+      padding: 6px 10px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      font-size: 10.5px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+    }
+
+    .refresh-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .refresh-countdown {
+      font-size: 9.5px;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    /* Alert item */
+    .alert-item {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-left: 3px solid transparent;
+      border-radius: var(--radius-md);
+      padding: 10px 11px;
+      margin-bottom: 7px;
+      cursor: pointer;
+      transition: var(--transition);
+      animation: fadeIn 0.2s ease;
     }
 
     .alert-item:hover { background: var(--bg-hover); }
@@ -672,10 +908,11 @@
     .alert-item.low      { border-left-color: var(--green); }
 
     .alert-name {
-      font-size: 12px;
+      font-size: 11.5px;
       font-weight: 600;
       color: var(--text-primary);
-      margin-bottom: 4px;
+      margin-bottom: 5px;
+      line-height: 1.3;
     }
 
     .alert-meta {
@@ -685,99 +922,93 @@
       flex-wrap: wrap;
     }
 
-    .severity-badge {
+    .sev-badge {
       font-size: 9px;
       font-weight: 700;
-      padding: 2px 7px;
+      padding: 2px 6px;
       border-radius: 4px;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.4px;
     }
 
-    .severity-badge.critical { background: var(--red-soft); color: var(--red); }
-    .severity-badge.high { background: rgba(251,99,64,.15); color: var(--orange); }
-    .severity-badge.medium { background: var(--yellow-soft); color: var(--yellow); }
-    .severity-badge.low  { background: var(--green-soft); color: var(--green); }
+    .sev-badge.critical { background: var(--red-soft);  color: var(--red); }
+    .sev-badge.high     { background: rgba(251,99,64,.15); color: var(--orange); }
+    .sev-badge.medium   { background: var(--yellow-soft); color: var(--yellow); }
+    .sev-badge.low      { background: var(--green-soft); color: var(--green); }
 
-    .alert-time { font-size: 10px; color: var(--text-muted); }
+    .alert-time {
+      font-size: 9.5px;
+      color: var(--text-muted);
+    }
 
-    /* Index stats */
+    .alert-hint {
+      font-size: 9.5px;
+      color: var(--text-muted);
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Index row */
     .index-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 8px 12px;
+      padding: 8px 11px;
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
-      margin-bottom: 6px;
+      margin-bottom: 5px;
       font-size: 11px;
+      cursor: pointer;
+      transition: var(--transition);
     }
+
+    .index-row:hover {
+      background: var(--bg-hover);
+      border-color: var(--accent);
+    }
+
+    .index-left { display: flex; align-items: center; gap: 8px; }
+
+    .index-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .index-dot.active   { background: var(--green); box-shadow: 0 0 5px var(--green); }
+    .index-dot.inactive { background: var(--text-muted); }
 
     .index-name {
       font-family: var(--font-mono);
       color: var(--accent);
-      font-weight: 500;
+      font-size: 11px;
     }
 
     .index-count {
       color: var(--text-secondary);
+      font-size: 10.5px;
       font-weight: 600;
     }
 
-    /* Panel button */
-    .panel-btn {
-      width: 100%;
-      padding: 8px 12px;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      color: var(--text-secondary);
-      font-size: 11px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: var(--transition);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      margin-bottom: 8px;
+    .empty-state {
+      text-align: center;
+      padding: 28px 12px;
+      color: var(--text-muted);
+      font-size: 11.5px;
     }
 
-    .panel-btn:hover {
-      background: var(--bg-hover);
-      border-color: var(--accent);
-      color: var(--accent);
-    }
-
-    /* ── Misc ─────────────────────────────────────────────────────────── */
-    .error-pill {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 14px;
-      background: var(--red-soft);
-      border: 1px solid rgba(245,54,92,.3);
-      border-radius: var(--radius-md);
-      font-size: 12px;
-      color: var(--red);
-    }
-
-    .tab-pane { display: none; }
-    .tab-pane.active { display: block; }
-
-    /* ── Responsive ─────────────────────────────────────────────────── */
-    @media (max-width: 900px) {
+    /* ── Responsive ────────────────────────────────────────────────────── */
+    @media (max-width: 860px) {
       .shell {
-        grid-template-columns: 48px 1fr;
-        grid-template-areas:
-          "header header"
-          "sidebar main";
+        grid-template-columns: 44px 1fr;
+        grid-template-areas: "header header" "sidebar main";
       }
       .right-panel { display: none; }
-      .agent-name, .agent-desc { display: none; }
-      .agent-card { margin: 0 4px 4px; justify-content: center; padding: 8px; }
-      .sidebar-section, .quick-prompts-list, .divider { display: none; }
+      .agent-name, .agent-desc, .sidebar-label, .quick-list, .sidebar-divider { display: none; }
+      .agent-card { margin: 0 3px 3px; justify-content: center; padding: 7px; }
     }
   </style>
 </head>
@@ -791,136 +1022,158 @@
       <div class="logo-icon">🛡️</div>
       <span>Hayyan SOC</span>
     </div>
-    <span style="font-size:12px;color:var(--text-muted);font-weight:400;">AI Intelligence Platform</span>
-    <div class="topbar-spacer"></div>
-    <div class="status-pill">
-      <div class="status-dot connecting" id="ws-status-dot"></div>
-      <span id="ws-status-text">Connecting...</span>
+    <span style="font-size:11px;color:var(--text-muted);font-weight:400;">AI Security Platform</span>
+
+    <div class="topbar-div"></div>
+
+    <div class="status-pill" id="splunk-pill">
+      <div class="status-dot warn" id="splunk-dot"></div>
+      <span id="splunk-text">Connecting to Splunk...</span>
     </div>
-    <div class="model-badge" id="model-badge">Gemini 2.5 Flash</div>
+
+    <div class="topbar-spacer"></div>
+
+    <div class="status-pill" id="ws-pill">
+      <div class="status-dot warn pulse" id="ws-dot"></div>
+      <span id="ws-text">Connecting...</span>
+    </div>
+
+    <div class="misp-badge warn" id="misp-badge" title="MISP Threat Intelligence Platform">⬡ MISP</div>
+    <div class="model-badge" id="model-badge">Llama 3.3 70B</div>
   </header>
 
   <!-- ── Left Sidebar ── -->
   <aside class="sidebar">
-    <div class="sidebar-section">Specialists</div>
+    <div class="sidebar-label">Functions</div>
 
-    <div class="agent-card" id="agent-triage" title="Auto-routes your request">
-      <div class="agent-icon" style="background:linear-gradient(135deg,var(--yellow),var(--orange));">🎯</div>
-      <div class="agent-meta">
-        <div class="agent-name">Triage</div>
-        <div class="agent-desc">Auto-routes requests</div>
-      </div>
-    </div>
-
-    <div class="agent-card" id="agent-query" title="Run Splunk SPL queries">
-      <div class="agent-icon" style="background:linear-gradient(135deg,var(--accent),#0056d2);">🔍</div>
-      <div class="agent-meta">
-        <div class="agent-name">Query Specialist</div>
-        <div class="agent-desc">SPL & index search</div>
-      </div>
-    </div>
-
-    <div class="agent-card" id="agent-alert" title="Triage active alerts">
+    <div class="agent-card" id="card-alerts"
+      onclick="sendQuick('What alerts are currently triggered in Splunk? Assess each one and tell me which require immediate action.')">
       <div class="agent-icon" style="background:linear-gradient(135deg,var(--red),#b91c1c);">🚨</div>
       <div class="agent-meta">
-        <div class="agent-name">Alert Triage</div>
-        <div class="agent-desc">Active alert analysis</div>
+        <div class="agent-name">Alert Monitor</div>
+        <div class="agent-desc">Check fired alerts</div>
       </div>
     </div>
 
-    <div class="agent-card" id="agent-invest" title="Deep-dive investigations">
+    <div class="agent-card" id="card-query"
+      onclick="focusInput('Run Splunk query: ')">
+      <div class="agent-icon" style="background:linear-gradient(135deg,var(--accent),#0056d2);">🔍</div>
+      <div class="agent-meta">
+        <div class="agent-name">Query Analyst</div>
+        <div class="agent-desc">Run SPL queries</div>
+      </div>
+    </div>
+
+    <div class="agent-card" id="card-invest"
+      onclick="focusInput('Investigate ')">
       <div class="agent-icon" style="background:linear-gradient(135deg,var(--purple),#6366f1);">🕵️</div>
       <div class="agent-meta">
         <div class="agent-name">Investigator</div>
-        <div class="agent-desc">Threat deep-dive</div>
+        <div class="agent-desc">Deep-dive threats</div>
       </div>
     </div>
 
-    <div class="agent-card" id="agent-report" title="Generate SOC reports">
+    <div class="agent-card" id="card-report"
+      onclick="sendQuick('Generate a comprehensive SOC security report covering all detected threats in the last 24 hours with MITRE ATT&CK mapping.')">
       <div class="agent-icon" style="background:linear-gradient(135deg,var(--green),#059669);">📋</div>
       <div class="agent-meta">
         <div class="agent-name">Report Writer</div>
-        <div class="agent-desc">IOCs & MITRE reports</div>
+        <div class="agent-desc">Full SOC reports</div>
       </div>
     </div>
 
-    <div class="divider"></div>
+    <div class="agent-card" id="card-misp"
+      onclick="sendQuick('Check the current vulnerability posture of all lab hosts using the vuln_scans index. What are the highest severity CVEs, which hosts are most exposed, and are any being actively attacked?')">
+      <div class="agent-icon" style="background:linear-gradient(135deg,var(--yellow),#b45309);">🛡️</div>
+      <div class="agent-meta">
+        <div class="agent-name">Vuln Posture</div>
+        <div class="agent-desc">CVE exposure check</div>
+      </div>
+    </div>
 
-    <div class="sidebar-section">Quick Prompts</div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-label">Quick Investigations</div>
 
-    <div class="quick-prompts-list" id="quick-prompts">
-      <div class="quick-prompt" data-prompt="What active alerts are currently triggered in Splunk?">
-        <span class="quick-prompt-icon">🚨</span>Show all active alerts
+    <div class="quick-list">
+      <div class="quick-item" data-prompt="What alerts are currently triggered in Splunk? Show me each alert with its severity and trigger count.">
+        <span class="quick-item-icon">🚨</span>Show active alerts
       </div>
-      <div class="quick-prompt" data-prompt="Run an SPL query to show all failed login events (EventCode=4625) in the last 24 hours grouped by user.">
-        <span class="quick-prompt-icon">🔍</span>Failed logins last 24h
+      <div class="quick-item" data-prompt="Investigate a potential password spray attack. Query index=windows_events for EventCode=4625 patterns in the last 2 hours, group by source IP and target user. Also check vulnerability posture of DC01.">
+        <span class="quick-item-icon">🔐</span>Password spray analysis
       </div>
-      <div class="quick-prompt" data-prompt="Investigate the user account svc_it — check for Kerberoasting activity and suspicious TGS requests.">
-        <span class="quick-prompt-icon">🕵️</span>Investigate svc_it account
+      <div class="quick-item" data-prompt="Show failed SSH login attempts from index=linux_secure in the last 6 hours. Group by source IP and count. Flag any IP with more than 3 failures. Check each flagged IP against MISP threat intel.">
+        <span class="quick-item-icon">🐧</span>SSH brute force events
       </div>
-      <div class="quick-prompt" data-prompt="Show me all SSH brute force events from index=linux_secure in the last 6 hours.">
-        <span class="quick-prompt-icon">🐧</span>SSH brute force events
+      <div class="quick-item" data-prompt="Detect web scanner activity: query index=linux_web for HTTP 404 errors in the last 30 minutes, grouped by clientip. Flag IPs with more than 10 hits. Look up top IPs in MISP threat intel.">
+        <span class="quick-item-icon">🕸️</span>Web scanner detection
       </div>
-      <div class="quick-prompt" data-prompt="Investigate IP address 192.168.56.10 — what activity is associated with it across all indexes?">
-        <span class="quick-prompt-icon">🌐</span>Investigate 192.168.56.10
+      <div class="quick-item" data-prompt="Investigate IP 192.168.56.10 — what has this host been doing across all Splunk indexes in the last 24 hours? Also check its vulnerability posture.">
+        <span class="quick-item-icon">🌐</span>Investigate DC01 (56.10)
       </div>
-      <div class="quick-prompt" data-prompt="Investigate a potential password spray attack against the hayyan.local domain. Check EventCode 4625 patterns.">
-        <span class="quick-prompt-icon">💣</span>Password spray analysis
+      <div class="quick-item" data-prompt="Check index=linux_audit for auditd events with key=identity_changes in the last 24 hours. What user or group changes were made?">
+        <span class="quick-item-icon">👤</span>Linux identity changes
       </div>
-      <div class="quick-prompt" data-prompt="Check index=sysmon for suspicious process creation (EventCode=1) with encoded PowerShell commands in the last 24h.">
-        <span class="quick-prompt-icon">⚡</span>Sysmon PowerShell abuse
+      <div class="quick-item" data-prompt="Show all vulnerability scan findings from index=vuln_scans in the last 30 days. Which hosts have critical CVEs? What is the recommended remediation for each?">
+        <span class="quick-item-icon">🔎</span>Vulnerability scan results
       </div>
-      <div class="quick-prompt" data-prompt="Generate a complete SOC investigation report for the Kerberoasting attempt detected on svc_it including MITRE mapping and IOCs.">
-        <span class="quick-prompt-icon">📋</span>Kerberoasting full report
+      <div class="quick-item" data-prompt="Check index=sysmon for suspicious process creation (EventCode=1) in the last 24 hours. Look for cmd.exe, powershell.exe with encoded commands, or unusual parent processes. Look up any suspicious file hashes in MISP.">
+        <span class="quick-item-icon">⚡</span>Sysmon process activity
       </div>
-      <div class="quick-prompt" data-prompt="Show me Nginx web scanner activity from index=linux_web — find IPs generating excessive 404 errors.">
-        <span class="quick-prompt-icon">🕸️</span>Web scanner detection
+      <div class="quick-item" data-prompt="Show top Windows security events in the last 24 hours from index=windows_events. Group by EventCode and count. Explain what each EventCode means.">
+        <span class="quick-item-icon">🪟</span>Windows event summary
+      </div>
+      <div class="quick-item" data-prompt="Run a crown-jewel risk check: find any lab host that has open high or critical CVEs in vuln_scans AND has also received attack traffic in the last 24 hours. This is the most dangerous situation — patch window needed.">
+        <span class="quick-item-icon">👑</span>Crown-jewel risk check
+      </div>
+      <div class="quick-item" data-prompt="Show me the current Splunk index statistics — event counts, data sizes, and when each index was last updated. Include vuln_scans, misp_iocs, and ai_soc_audit.">
+        <span class="quick-item-icon">📊</span>Index statistics
       </div>
     </div>
   </aside>
 
   <!-- ── Main Chat ── -->
   <main class="main">
-    <div class="chat-messages" id="chat-messages">
-      <div class="welcome-hero" id="welcome-hero">
+    <div class="chat-msgs" id="chat-msgs">
+      <div class="welcome" id="welcome">
         <div class="welcome-icon">🛡️</div>
         <h1>Hayyan SOC AI Platform</h1>
-        <p>Enterprise LangGraph multi-agent system connected to Splunk. Ask me to analyze alerts, run queries, investigate threats, or generate full SOC reports.</p>
+        <p>Autonomous Tier-1 security analyst connected to your Splunk SIEM. Ask me to investigate alerts, run queries, analyze threats, or generate incident reports.</p>
 
         <div class="welcome-grid">
-          <div class="welcome-card" onclick="sendQuick('What active alerts are currently triggered in Splunk?')">
-            <div class="welcome-card-icon">🚨</div>
-            <div class="welcome-card-title">Check Active Alerts</div>
-            <div class="welcome-card-desc">Fetch and triage all fired Splunk alerts</div>
+          <div class="welcome-card" onclick="sendQuick('What alerts are currently triggered in Splunk? Assess each one and tell me which require immediate action.')">
+            <div class="wc-icon">🚨</div>
+            <div class="wc-title">Check Active Alerts</div>
+            <div class="wc-desc">Fetch and assess all fired Splunk alerts right now</div>
           </div>
-          <div class="welcome-card" onclick="sendQuick('Investigate a potential password spray attack against hayyan.local. Check EventCode 4625.')">
-            <div class="welcome-card-icon">🔐</div>
-            <div class="welcome-card-title">Investigate Threat</div>
-            <div class="welcome-card-desc">Deep-dive credential attack analysis</div>
+          <div class="welcome-card" onclick="sendQuick('Investigate a potential password spray attack against hayyan.local. Check EventCode=4625 in windows_events from the last 2 hours.')">
+            <div class="wc-icon">🔐</div>
+            <div class="wc-title">Investigate Threat</div>
+            <div class="wc-desc">Deep-dive password spray or brute force attack</div>
           </div>
-          <div class="welcome-card" onclick="sendQuick('Run SPL to show top 10 source IPs with failed logins from index=windows_events in the last 24h.')">
-            <div class="welcome-card-icon">🔍</div>
-            <div class="welcome-card-title">Run SPL Query</div>
-            <div class="welcome-card-desc">Expert Splunk search and enrichment</div>
+          <div class="welcome-card" onclick="sendQuick('Run a Splunk query to show top 10 source IPs with the most failed logins in the last 24 hours from windows_events index.')">
+            <div class="wc-icon">🔍</div>
+            <div class="wc-title">Run SPL Query</div>
+            <div class="wc-desc">Execute Splunk searches with expert analysis</div>
           </div>
-          <div class="welcome-card" onclick="sendQuick('Generate a complete SOC investigation report with MITRE ATT&CK mapping and IOC list for the current incident.')">
-            <div class="welcome-card-icon">📋</div>
-            <div class="welcome-card-title">Generate Report</div>
-            <div class="welcome-card-desc">Executive & technical SOC reports</div>
+          <div class="welcome-card" onclick="sendQuick('Generate a comprehensive SOC security report covering all detected threats in the last 24 hours with MITRE ATT&amp;CK mapping and IOCs.')">
+            <div class="wc-icon">📋</div>
+            <div class="wc-title">Generate Report</div>
+            <div class="wc-desc">Full incident report with MITRE ATT&CK mapping</div>
           </div>
         </div>
       </div>
     </div>
 
     <div class="input-area">
-      <div class="input-wrapper">
+      <div class="input-wrap">
         <textarea
           id="chat-input"
           rows="1"
-          placeholder="Ask the SOC AI: investigate an alert, run a Splunk query, analyze a threat..."
+          placeholder="Ask the SOC AI — investigate an alert, run a Splunk query, analyze a threat..."
         ></textarea>
-        <button class="send-btn" id="send-btn" onclick="sendMessage()" disabled title="Send (Enter)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <button class="send-btn" id="send-btn" onclick="sendMessage()" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+               stroke-linecap="round" stroke-linejoin="round">
             <line x1="22" y1="2" x2="11" y2="13"></line>
             <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
           </svg>
@@ -928,34 +1181,62 @@
       </div>
       <div class="input-hints">
         <span class="hint-key">Enter</span> send &nbsp;·&nbsp;
-        <span class="hint-key">Shift+Enter</span> newline &nbsp;·&nbsp;
-        <span style="color:var(--accent);">🟢 WebSocket streaming active</span>
+        <span class="hint-key">Shift+Enter</span> newline
       </div>
     </div>
   </main>
 
   <!-- ── Right Panel ── -->
   <aside class="right-panel">
-    <div class="panel-tab-bar">
-      <div class="panel-tab active" id="tab-alerts" onclick="switchTab('alerts')">Alerts</div>
-      <div class="panel-tab" id="tab-indexes" onclick="switchTab('indexes')">Indexes</div>
+    <div class="tab-bar">
+      <div class="tab-btn active" id="tab-alerts" onclick="switchTab('alerts')">
+        Alerts
+        <span class="alert-count-badge" id="alert-badge" style="display:none">0</span>
+      </div>
+      <div class="tab-btn" id="tab-vuln" onclick="switchTab('vuln')">Vulns</div>
+      <div class="tab-btn" id="tab-indexes" onclick="switchTab('indexes')">Indexes</div>
     </div>
 
-    <div class="panel-content" id="panel-alerts">
-      <button class="panel-btn" onclick="loadAlerts()">⟳ Refresh Alerts</button>
+    <!-- Alerts Panel -->
+    <div class="panel-body" id="panel-alerts">
+      <div class="refresh-bar">
+        <button class="refresh-btn" onclick="loadAlerts(true)">⟳ Refresh</button>
+        <span class="refresh-countdown" id="alert-countdown"></span>
+      </div>
       <div id="alerts-list">
-        <div style="font-size:12px;color:var(--text-muted);text-align:center;padding:20px 0;">
-          Click refresh to load active alerts
-        </div>
+        <div class="empty-state">Loading alerts...</div>
       </div>
     </div>
 
-    <div class="panel-content tab-pane" id="panel-indexes">
-      <button class="panel-btn" onclick="loadIndexes()">⟳ Refresh Indexes</button>
+    <!-- Vuln Posture Panel -->
+    <div class="panel-body" id="panel-vuln" style="display:none">
+      <div class="refresh-bar">
+        <button class="refresh-btn" onclick="loadVulnPosture(true)">⟳ Refresh</button>
+        <span class="refresh-countdown" id="vuln-countdown"></span>
+      </div>
+
+      <!-- Summary stats row -->
+      <div id="vuln-stats" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;"></div>
+
+      <div class="panel-section-hdr">Host Exposure</div>
+      <div id="vuln-list">
+        <div class="empty-state">Loading vulnerability posture...</div>
+      </div>
+
+      <div class="panel-section-hdr" style="margin-top:10px;">MISP Platform</div>
+      <div id="misp-status-detail">
+        <div class="empty-state" style="font-size:10.5px;">Checking MISP...</div>
+      </div>
+    </div>
+
+    <!-- Indexes Panel -->
+    <div class="panel-body" id="panel-indexes" style="display:none">
+      <div class="refresh-bar">
+        <button class="refresh-btn" onclick="loadIndexes(true)">⟳ Refresh</button>
+        <span class="refresh-countdown" id="index-countdown"></span>
+      </div>
       <div id="indexes-list">
-        <div style="font-size:12px;color:var(--text-muted);text-align:center;padding:20px 0;">
-          Click refresh to load index stats
-        </div>
+        <div class="empty-state">Loading indexes...</div>
       </div>
     </div>
   </aside>
@@ -963,40 +1244,39 @@
 </div>
 
 <script>
-/* ─────────────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────────
    State
-───────────────────────────────────────────────── */
-let ws = null;
-let threadId = null;
+───────────────────────────────────────────────────────────────── */
+let ws          = null;
+let threadId    = null;
 let isStreaming = false;
-let currentStatusEl = null;
-let partialBuffer = {};
+let statusEl    = null;      // typing indicator element
+let stepsEl     = null;      // current tool-steps container
+let lastStepEl  = null;      // most recently added tool-step
 
-/* ─────────────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────────
    Marked config
-───────────────────────────────────────────────── */
+───────────────────────────────────────────────────────────────── */
 marked.setOptions({
   gfm: true,
   breaks: true,
   highlight: (code, lang) => {
-    if (lang && hljs.getLanguage(lang)) {
-      return hljs.highlight(code, { language: lang }).value;
-    }
+    if (lang && hljs.getLanguage(lang)) return hljs.highlight(code, { language: lang }).value;
     return hljs.highlightAuto(code).value;
   }
 });
 
-/* ─────────────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────────
    WebSocket
-───────────────────────────────────────────────── */
+───────────────────────────────────────────────────────────────── */
 function connectWS() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  const url = `${proto}://${location.host}/ws/chat`;
-  ws = new WebSocket(url);
+  ws = new WebSocket(`${proto}://${location.host}/ws/chat`);
 
   ws.onopen = () => {
-    setWSStatus('online', 'Splunk Connected');
+    setWSStatus('online', 'Agent Online');
     document.getElementById('send-btn').disabled = false;
+    loadSystemStatus();   // refresh Splunk status now that WS is up
   };
 
   ws.onclose = () => {
@@ -1006,85 +1286,187 @@ function connectWS() {
     setTimeout(connectWS, 3000);
   };
 
-  ws.onerror = () => {
-    setWSStatus('offline', 'Connection Error');
-  };
+  ws.onerror = () => setWSStatus('offline', 'Error');
 
-  ws.onmessage = (evt) => {
-    const msg = JSON.parse(evt.data);
-    handleWSMessage(msg);
-  };
+  ws.onmessage = ({ data }) => handleWS(JSON.parse(data));
 }
 
 function setWSStatus(state, text) {
-  const dot = document.getElementById('ws-status-dot');
-  const label = document.getElementById('ws-status-text');
-  dot.className = `status-dot ${state === 'online' ? '' : state === 'offline' ? 'offline' : 'connecting'}`;
-  label.textContent = text;
+  const dot = document.getElementById('ws-dot');
+  const lbl = document.getElementById('ws-text');
+  dot.className = 'status-dot' +
+    (state === 'online' ? ' pulse' : state === 'offline' ? ' offline' : ' warn');
+  lbl.textContent = text;
 }
 
-/* ─────────────────────────────────────────────────
-   Message handling
-───────────────────────────────────────────────── */
-function handleWSMessage(msg) {
+/* ─────────────────────────────────────────────────────────────────
+   WS message handler
+───────────────────────────────────────────────────────────────── */
+function handleWS(msg) {
   switch (msg.type) {
+
     case 'status':
-      showStatusMsg(msg.content);
+      showStatus(msg.content);
       break;
 
-    case 'partial':
-      // Accumulate partial content per agent
-      const agentKey = msg.agent || 'agent';
-      if (!partialBuffer[agentKey]) partialBuffer[agentKey] = '';
-      partialBuffer[agentKey] += msg.content;
-      // Update a live message bubble
-      updatePartialMsg(agentKey, partialBuffer[agentKey]);
+    case 'tool_call':
+      showStatus(getToolLabel(msg.tool) + '...');
+      appendToolStep(msg.tool, msg.args);
+      break;
+
+    case 'tool_result':
+      completeLastStep(msg.content);
+      showStatus('Processing results...');
       break;
 
     case 'report':
-      clearStatusMsg();
-      clearPartialMsgs();
-      partialBuffer = {};
-      appendAgentMsg(msg.content, 'synthesize');
+      removeStatus();
+      finalizeSteps();
+      appendAgentMsg(msg.content);
       if (msg.thread_id) threadId = msg.thread_id;
       break;
 
     case 'done':
-      clearStatusMsg();
-      isStreaming = false;
-      document.getElementById('send-btn').disabled = false;
-      document.getElementById('chat-input').disabled = false;
+      removeStatus();
+      setStreaming(false);
       if (msg.thread_id) threadId = msg.thread_id;
       break;
 
     case 'error':
-      clearStatusMsg();
-      appendErrorMsg(msg.content);
-      isStreaming = false;
-      document.getElementById('send-btn').disabled = false;
-      document.getElementById('chat-input').disabled = false;
+      removeStatus();
+      clearSteps();
+      appendError(msg.content);
+      setStreaming(false);
       break;
   }
 }
 
-/* ─────────────────────────────────────────────────
-   DOM helpers
-───────────────────────────────────────────────── */
-function getContainer() {
-  return document.getElementById('chat-messages');
+/* ─────────────────────────────────────────────────────────────────
+   Tool step visualization
+───────────────────────────────────────────────────────────────── */
+function getToolLabel(tool) {
+  const map = {
+    check_splunk_health:  'Checking Splunk health',
+    validate_spl_query:   'Validating SPL query',
+    run_splunk_query:     'Running Splunk query',
+    get_triggered_alerts: 'Fetching triggered alerts',
+    get_index_stats:      'Getting index stats',
+    get_saved_searches:   'Listing saved searches',
+    investigate_ip:       'Investigating IP',
+    investigate_user:     'Investigating user',
+    query_misp_ioc:       'Querying MISP threat intel',
+    get_vuln_posture:     'Checking vulnerability posture',
+    create_misp_event:    'Creating MISP event',
+  };
+  return map[tool] || tool;
 }
 
+function getArgsHint(tool, args) {
+  if (!args) return '';
+  switch (tool) {
+    case 'run_splunk_query':   return args.spl ? truncate(args.spl, 55) : '';
+    case 'investigate_ip':     return args.ip_address || '';
+    case 'investigate_user':   return args.username || '';
+    case 'validate_spl_query': return args.spl ? truncate(args.spl, 35) : '';
+    case 'query_misp_ioc':     return args.indicator || '';
+    case 'get_vuln_posture':   return args.target || 'all hosts';
+    case 'create_misp_event':  return args.title ? truncate(args.title, 40) : '';
+    default: return '';
+  }
+}
+
+function summarizeResult(content) {
+  if (!content || content === 'undefined') return '';
+  if (content.includes('0 results') || content === 'Query returned 0 results.') return '0 results';
+  if (content.includes('"healthy"') || content.includes('"status": "healthy"')) return '✓ healthy';
+  if (content.includes('No triggered alerts')) return 'none';
+  if (content.includes('BLOCKED')) return '✗ blocked';
+  if (content.toLowerCase().includes('error')) return '✗ error';
+  try {
+    const data = JSON.parse(content);
+    if (Array.isArray(data)) return `${data.length} row${data.length !== 1 ? 's' : ''}`;
+    if (data.results) return `${data.results.length} results`;
+  } catch {}
+  return truncate(content.replace(/\n/g, ' '), 40);
+}
+
+function appendToolStep(tool, args) {
+  if (!stepsEl) {
+    stepsEl = document.createElement('div');
+    stepsEl.className = 'steps-wrapper';
+    getMsgs().appendChild(stepsEl);
+  }
+  const step = document.createElement('div');
+  step.className = 'tool-step running';
+  const hint = getArgsHint(tool, args);
+  step.innerHTML = `
+    <div class="ts-dot"></div>
+    <span class="ts-label">${esc(getToolLabel(tool))}</span>
+    ${hint ? `<span class="ts-args">${esc(hint)}</span>` : ''}
+    <span class="ts-result">...</span>
+  `;
+  stepsEl.appendChild(step);
+  lastStepEl = step;
+  scrollBottom();
+}
+
+function completeLastStep(content) {
+  if (!lastStepEl) return;
+  lastStepEl.classList.remove('running');
+  const isErr = content && (content.toLowerCase().includes('error') || content.includes('BLOCKED'));
+  lastStepEl.classList.add(isErr ? 'err' : 'done');
+  const r = lastStepEl.querySelector('.ts-result');
+  if (r) r.textContent = summarizeResult(content);
+  lastStepEl = null;
+}
+
+function finalizeSteps() {
+  // Keep steps visible as context; reset references for next message
+  if (lastStepEl) { lastStepEl.classList.remove('running'); lastStepEl = null; }
+  stepsEl = null;
+}
+
+function clearSteps() {
+  if (lastStepEl) lastStepEl = null;
+  if (stepsEl) { stepsEl.remove(); stepsEl = null; }
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Status indicator
+───────────────────────────────────────────────────────────────── */
+function showStatus(text) {
+  if (!statusEl) {
+    statusEl = document.createElement('div');
+    statusEl.className = 'status-indicator';
+    getMsgs().appendChild(statusEl);
+  }
+  statusEl.innerHTML = `
+    <div class="typing-dots"><span></span><span></span><span></span></div>
+    <span>${esc(text)}</span>
+  `;
+  scrollBottom();
+}
+
+function removeStatus() {
+  if (statusEl) { statusEl.remove(); statusEl = null; }
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Chat DOM helpers
+───────────────────────────────────────────────────────────────── */
+function getMsgs() { return document.getElementById('chat-msgs'); }
+
 function hideWelcome() {
-  const hero = document.getElementById('welcome-hero');
-  if (hero) hero.style.display = 'none';
+  const w = document.getElementById('welcome');
+  if (w) w.style.display = 'none';
 }
 
 function scrollBottom() {
-  const c = getContainer();
+  const c = getMsgs();
   c.scrollTop = c.scrollHeight;
 }
 
-function now() {
+function ts() {
   return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
@@ -1097,247 +1479,534 @@ function appendUserMsg(text) {
     <div class="msg-body">
       <div class="msg-header">
         <span class="msg-role">You</span>
-        <span class="msg-ts">${now()}</span>
+        <span class="msg-ts">${ts()}</span>
       </div>
-      <div class="msg-content">${escapeHtml(text)}</div>
+      <div class="msg-content">${esc(text)}</div>
     </div>
   `;
-  getContainer().appendChild(el);
+  getMsgs().appendChild(el);
   scrollBottom();
 }
 
-function agentTagHTML(agentName) {
-  const map = {
-    query_agent: ['tag-query', 'Query Specialist'],
-    alert_agent: ['tag-alert', 'Alert Triage'],
-    investigation_agent: ['tag-invest', 'Investigator'],
-    report_agent: ['tag-report', 'Report Agent'],
-    triage: ['tag-triage', 'Triage'],
-    synthesize: ['tag-synth', '⭐ Final Report'],
-  };
-  const [cls, label] = map[agentName] || ['tag-triage', agentName];
-  return `<span class="msg-agent-tag ${cls}">${label}</span>`;
-}
-
-function appendAgentMsg(markdown, agentName) {
+function appendAgentMsg(markdown) {
   hideWelcome();
   const el = document.createElement('div');
   el.className = 'msg agent';
+
+  // Detect whether it's a full report or a short answer
+  const isReport = markdown.includes('## ') || markdown.length > 400;
+  const tag = isReport
+    ? '<span class="msg-tag tag-report">Report</span>'
+    : '<span class="msg-tag tag-query">Answer</span>';
+
   el.innerHTML = `
     <div class="msg-avatar agent">🤖</div>
     <div class="msg-body">
       <div class="msg-header">
         <span class="msg-role">SOC AI</span>
-        ${agentTagHTML(agentName)}
-        <span class="msg-ts">${now()}</span>
+        ${tag}
+        <span class="msg-ts">${ts()}</span>
       </div>
-      <div class="msg-content">${marked.parse(markdown)}</div>
+      <div class="msg-content"></div>
     </div>
   `;
-  getContainer().appendChild(el);
-  // Highlight code blocks
-  el.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
-  scrollBottom();
-
-  // Update active agent in sidebar
-  highlightAgent(agentName);
-}
-
-// Partial (live) message bubble per agent
-let partialMsgEls = {};
-
-function updatePartialMsg(agentKey, content) {
-  hideWelcome();
-  if (!partialMsgEls[agentKey]) {
-    const el = document.createElement('div');
-    el.className = 'msg agent';
-    el.dataset.agentKey = agentKey;
-    el.innerHTML = `
-      <div class="msg-avatar agent">🤖</div>
-      <div class="msg-body">
-        <div class="msg-header">
-          <span class="msg-role">SOC AI</span>
-          ${agentTagHTML(agentKey)}
-          <span class="msg-ts">${now()}</span>
-        </div>
-        <div class="msg-content"></div>
-      </div>
-    `;
-    getContainer().appendChild(el);
-    partialMsgEls[agentKey] = el;
-  }
-  const contentDiv = partialMsgEls[agentKey].querySelector('.msg-content');
-  contentDiv.innerHTML = marked.parse(content);
+  const contentDiv = el.querySelector('.msg-content');
+  contentDiv.innerHTML = marked.parse(markdown);
   contentDiv.querySelectorAll('pre code').forEach(b => hljs.highlightElement(b));
+  getMsgs().appendChild(el);
   scrollBottom();
+
+  // Highlight active agent card
+  highlightCard(isReport ? 'card-report' : 'card-query');
 }
 
-function clearPartialMsgs() {
-  Object.values(partialMsgEls).forEach(el => el.remove());
-  partialMsgEls = {};
-}
-
-function showStatusMsg(text) {
-  clearStatusMsg();
-  const el = document.createElement('div');
-  el.id = 'status-indicator';
-  el.className = 'status-msg';
-  el.innerHTML = `
-    <div class="typing-dots"><span></span><span></span><span></span></div>
-    <span>${escapeHtml(text)}</span>
-  `;
-  getContainer().appendChild(el);
-  scrollBottom();
-  currentStatusEl = el;
-}
-
-function clearStatusMsg() {
-  const el = document.getElementById('status-indicator');
-  if (el) el.remove();
-  currentStatusEl = null;
-}
-
-function appendErrorMsg(text) {
+function appendError(text) {
+  hideWelcome();
   const el = document.createElement('div');
   el.className = 'error-pill';
-  el.innerHTML = `⚠️ <span>${escapeHtml(text)}</span>`;
-  getContainer().appendChild(el);
+  el.innerHTML = `⚠️ <span>${esc(text)}</span>`;
+  getMsgs().appendChild(el);
   scrollBottom();
 }
 
-function highlightAgent(name) {
+function highlightCard(id) {
   document.querySelectorAll('.agent-card').forEach(c => c.classList.remove('active'));
-  const map = {
-    query_agent: 'agent-query',
-    alert_agent: 'agent-alert',
-    investigation_agent: 'agent-invest',
-    report_agent: 'agent-report',
-    synthesize: 'agent-report',
-    triage: 'agent-triage',
-  };
-  const id = map[name];
-  if (id) document.getElementById(id)?.classList.add('active');
+  document.getElementById(id)?.classList.add('active');
 }
 
-function escapeHtml(s) {
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function esc(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
-/* ─────────────────────────────────────────────────
-   Send
-───────────────────────────────────────────────── */
+function truncate(s, n) {
+  return s.length > n ? s.slice(0, n) + '…' : s;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Streaming state helpers
+───────────────────────────────────────────────────────────────── */
+function setStreaming(on) {
+  isStreaming = on;
+  document.getElementById('send-btn').disabled = on;
+  document.getElementById('chat-input').disabled = on;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Send message
+───────────────────────────────────────────────────────────────── */
 function sendMessage() {
   const input = document.getElementById('chat-input');
-  const text = input.value.trim();
+  const text  = input.value.trim();
   if (!text || isStreaming || !ws || ws.readyState !== WebSocket.OPEN) return;
 
   appendUserMsg(text);
   input.value = '';
   input.style.height = 'auto';
 
-  isStreaming = true;
-  document.getElementById('send-btn').disabled = true;
-  input.disabled = true;
-  partialBuffer = {};
+  setStreaming(true);
+  stepsEl   = null;
+  lastStepEl = null;
+  statusEl  = null;
 
   ws.send(JSON.stringify({ message: text, thread_id: threadId }));
 }
 
 function sendQuick(text) {
-  document.getElementById('chat-input').value = text;
+  const input = document.getElementById('chat-input');
+  input.value = text;
   sendMessage();
 }
 
-/* ─────────────────────────────────────────────────
+function focusInput(prefix) {
+  const input = document.getElementById('chat-input');
+  input.value = prefix;
+  input.focus();
+  input.setSelectionRange(prefix.length, prefix.length);
+}
+
+/* ─────────────────────────────────────────────────────────────────
    Input events
-───────────────────────────────────────────────── */
-document.getElementById('chat-input').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage();
-  }
+───────────────────────────────────────────────────────────────── */
+document.getElementById('chat-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
 });
 
-document.getElementById('chat-input').addEventListener('input', function() {
+document.getElementById('chat-input').addEventListener('input', function () {
   this.style.height = 'auto';
-  this.style.height = Math.min(this.scrollHeight, 140) + 'px';
+  this.style.height = Math.min(this.scrollHeight, 130) + 'px';
 });
 
-document.querySelectorAll('.quick-prompt').forEach(el => {
+document.querySelectorAll('.quick-item').forEach(el => {
   el.addEventListener('click', () => sendQuick(el.dataset.prompt));
 });
 
-/* ─────────────────────────────────────────────────
-   Right panel
-───────────────────────────────────────────────── */
-function switchTab(name) {
-  document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.panel-content').forEach(p => p.classList.remove('active'));
-  document.getElementById(`tab-${name}`).classList.add('active');
-  document.getElementById(`panel-${name}`).classList.add('active');
+/* ─────────────────────────────────────────────────────────────────
+   System status (/api/health + /api/misp/health)
+───────────────────────────────────────────────────────────────── */
+async function loadSystemStatus() {
+  try {
+    const res  = await fetch('/api/health');
+    const data = await res.json();
+
+    // Splunk pill
+    const dot  = document.getElementById('splunk-dot');
+    const lbl  = document.getElementById('splunk-text');
+    if (data.splunk_connected) {
+      dot.className = 'status-dot pulse';
+      lbl.textContent = `Splunk ${data.splunk_host}`;
+    } else {
+      dot.className = 'status-dot offline';
+      lbl.textContent = 'Splunk Offline';
+    }
+
+    // Model badge
+    const badge = document.getElementById('model-badge');
+    if (data.model_display) badge.textContent = data.model_display;
+
+  } catch { /* silent */ }
+
+  // MISP badge (non-blocking)
+  loadMispBadge();
 }
 
-// Override panel-content default visibility
-document.getElementById('panel-alerts').classList.add('active');
-
-async function loadAlerts() {
-  const container = document.getElementById('alerts-list');
-  container.innerHTML = '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:20px 0;">Loading...</div>';
+async function loadMispBadge() {
+  const badge = document.getElementById('misp-badge');
+  if (!badge) return;
   try {
-    const res = await fetch('/api/alerts');
+    const res  = await fetch('/api/misp/health');
     const data = await res.json();
-    if (data.error) { container.innerHTML = `<div class="error-pill">⚠️ ${escapeHtml(data.error)}</div>`; return; }
-    const alerts = data.alerts || [];
-    if (!alerts.length) {
-      container.innerHTML = '<div style="font-size:12px;color:var(--green);text-align:center;padding:20px 0;">✅ No active alerts</div>';
+    if (data.connected) {
+      badge.className = 'misp-badge';
+      badge.textContent = `⬡ MISP ${data.version || ''}`.trim();
+      badge.title = `MISP connected — ${data.misp_url}`;
+    } else if (data.status === 'not_configured') {
+      badge.className = 'misp-badge warn';
+      badge.textContent = '⬡ MISP —';
+      badge.title = 'MISP not configured. Add MISP_API_KEY to .env';
+    } else {
+      badge.className = 'misp-badge offline';
+      badge.textContent = '⬡ MISP ✕';
+      badge.title = data.message || 'MISP unreachable';
+    }
+  } catch {
+    badge.className = 'misp-badge offline';
+    badge.textContent = '⬡ MISP ✕';
+    badge.title = 'MISP health check failed';
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Tab switching
+───────────────────────────────────────────────────────────────── */
+function switchTab(name) {
+  ['alerts', 'vuln', 'indexes'].forEach(t => {
+    document.getElementById(`tab-${t}`).classList.toggle('active', t === name);
+    document.getElementById(`panel-${t}`).style.display = t === name ? 'flex' : 'none';
+  });
+  if (name === 'indexes' && document.getElementById('indexes-list').innerHTML.includes('Loading')) {
+    loadIndexes(false);
+  }
+  if (name === 'vuln' && document.getElementById('vuln-list').innerHTML.includes('Loading')) {
+    loadVulnPosture(false);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Alerts panel
+───────────────────────────────────────────────────────────────── */
+let alertTimer   = null;
+let alertSecsLeft = 30;
+
+function startAlertRefresh() {
+  if (alertTimer) clearInterval(alertTimer);
+  alertSecsLeft = 30;
+  updateAlertCountdown();
+  alertTimer = setInterval(() => {
+    alertSecsLeft--;
+    updateAlertCountdown();
+    if (alertSecsLeft <= 0) {
+      alertSecsLeft = 30;
+      loadAlerts(false);
+    }
+  }, 1000);
+}
+
+function updateAlertCountdown() {
+  const el = document.getElementById('alert-countdown');
+  if (el) el.textContent = `Auto ${alertSecsLeft}s`;
+}
+
+async function loadAlerts(manual = true) {
+  if (manual) { alertSecsLeft = 30; updateAlertCountdown(); }
+  const list = document.getElementById('alerts-list');
+
+  try {
+    const res  = await fetch('/api/alerts');
+    const data = await res.json();
+
+    if (data.error) {
+      list.innerHTML = `<div class="error-pill" style="font-size:11px;">⚠️ ${esc(data.error)}</div>`;
+      updateAlertBadge(0);
       return;
     }
-    container.innerHTML = alerts.map(a => {
+
+    const alerts = data.alerts || [];
+    updateAlertBadge(alerts.length);
+
+    if (!alerts.length) {
+      list.innerHTML = '<div class="empty-state">✅ No active alerts</div>';
+      return;
+    }
+
+    list.innerHTML = alerts.map(a => {
       const sev = (a.severity || 'medium').toLowerCase();
+      const time = a.trigger_time
+        ? new Date(a.trigger_time * 1000).toLocaleString([], { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' })
+        : '';
+      const count = a.count ? `${a.count} trigger${a.count !== 1 ? 's' : ''}` : '';
       return `
-        <div class="alert-item ${sev}" onclick="sendQuick('Analyze this alert: ${escapeHtml(a.name)}. What does it mean and what should I do?')">
-          <div class="alert-name">${escapeHtml(a.name)}</div>
+        <div class="alert-item ${sev}"
+          onclick="sendQuick('Investigate this Splunk alert: ${esc(a.name)}. Run the relevant queries, analyze the events, and give me a full security assessment with recommended actions.')">
+          <div class="alert-name">${esc(a.name)}</div>
           <div class="alert-meta">
-            <span class="severity-badge ${sev}">${sev}</span>
-            <span class="alert-time">${a.trigger_time ? new Date(a.trigger_time * 1000).toLocaleString() : ''}</span>
+            <span class="sev-badge ${sev}">${sev}</span>
+            ${count ? `<span class="alert-time">${esc(count)}</span>` : ''}
+            ${time  ? `<span class="alert-time">${esc(time)}</span>` : ''}
           </div>
+          <div class="alert-hint">👆 Click to investigate</div>
         </div>
       `;
     }).join('');
+
   } catch (e) {
-    container.innerHTML = `<div class="error-pill">⚠️ ${escapeHtml(e.message)}</div>`;
+    list.innerHTML = `<div class="error-pill" style="font-size:11px;">⚠️ ${esc(e.message)}</div>`;
+    updateAlertBadge(0);
   }
 }
 
-async function loadIndexes() {
-  const container = document.getElementById('indexes-list');
-  container.innerHTML = '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:20px 0;">Loading...</div>';
+function updateAlertBadge(count) {
+  const badge = document.getElementById('alert-badge');
+  if (count > 0) {
+    badge.textContent = count;
+    badge.style.display = 'inline-flex';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Indexes panel
+───────────────────────────────────────────────────────────────── */
+let indexTimer    = null;
+let indexSecsLeft = 60;
+
+function startIndexRefresh() {
+  if (indexTimer) clearInterval(indexTimer);
+  indexSecsLeft = 60;
+  indexTimer = setInterval(() => {
+    indexSecsLeft--;
+    const el = document.getElementById('index-countdown');
+    if (el) el.textContent = `Auto ${indexSecsLeft}s`;
+    if (indexSecsLeft <= 0) {
+      indexSecsLeft = 60;
+      loadIndexes(false);
+    }
+  }, 1000);
+}
+
+const SOC_INDEXES = ['linux_audit', 'linux_web', 'linux_secure', 'windows_events', 'sysmon'];
+
+async function loadIndexes(manual = true) {
+  if (manual) { indexSecsLeft = 60; }
+  const list = document.getElementById('indexes-list');
+
   try {
-    const res = await fetch('/api/indexes');
+    const res  = await fetch('/api/indexes');
     const data = await res.json();
-    if (data.error) { container.innerHTML = `<div class="error-pill">⚠️ ${escapeHtml(data.error)}</div>`; return; }
-    const indexes = (data.indexes || []).filter(i => ['linux_audit','linux_web','linux_secure','windows_events','sysmon'].includes(i.name));
-    if (!indexes.length) {
-      container.innerHTML = '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:20px 0;">No indexes found</div>';
+
+    if (data.error) {
+      list.innerHTML = `<div class="error-pill" style="font-size:11px;">⚠️ ${esc(data.error)}</div>`;
       return;
     }
-    container.innerHTML = indexes.map(i => `
-      <div class="index-row">
-        <span class="index-name">${escapeHtml(i.name)}</span>
-        <span class="index-count">${(i.total_event_count || 0).toLocaleString()} events</span>
-      </div>
-    `).join('');
-  } catch(e) {
-    container.innerHTML = `<div class="error-pill">⚠️ ${escapeHtml(e.message)}</div>`;
+
+    const all  = data.indexes || [];
+    // Show SOC indexes first, then others
+    const soc  = all.filter(i => SOC_INDEXES.includes(i.name));
+    const rest = all.filter(i => !SOC_INDEXES.includes(i.name) && parseInt(i.total_event_count||0) > 0);
+    const show = [...soc, ...rest];
+
+    if (!show.length) {
+      list.innerHTML = '<div class="empty-state">No indexes found</div>';
+      return;
+    }
+
+    list.innerHTML = show.map(i => {
+      const count  = parseInt(i.total_event_count || 0);
+      const active = count > 0;
+      const label  = count > 0 ? count.toLocaleString() + ' events' : 'empty';
+      return `
+        <div class="index-row"
+          onclick="sendQuick('Show me the latest 20 events from index=${esc(i.name)} and summarize what type of activity is in this index.')">
+          <div class="index-left">
+            <div class="index-dot ${active ? 'active' : 'inactive'}"></div>
+            <span class="index-name">${esc(i.name)}</span>
+          </div>
+          <span class="index-count">${esc(label)}</span>
+        </div>
+      `;
+    }).join('');
+
+  } catch (e) {
+    list.innerHTML = `<div class="error-pill" style="font-size:11px;">⚠️ ${esc(e.message)}</div>`;
   }
 }
 
-/* ─────────────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────────
+   Vulnerability Posture panel
+───────────────────────────────────────────────────────────────── */
+let vulnTimer    = null;
+let vulnSecsLeft = 300;   // refresh every 5 min — scan data doesn't change often
+
+function startVulnRefresh() {
+  if (vulnTimer) clearInterval(vulnTimer);
+  vulnSecsLeft = 300;
+  updateVulnCountdown();
+  vulnTimer = setInterval(() => {
+    vulnSecsLeft--;
+    updateVulnCountdown();
+    if (vulnSecsLeft <= 0) {
+      vulnSecsLeft = 300;
+      loadVulnPosture(false);
+    }
+  }, 1000);
+}
+
+function updateVulnCountdown() {
+  const el = document.getElementById('vuln-countdown');
+  if (!el) return;
+  const mins = Math.floor(vulnSecsLeft / 60);
+  const secs = vulnSecsLeft % 60;
+  el.textContent = `Auto ${mins}:${String(secs).padStart(2,'0')}`;
+}
+
+async function loadVulnPosture(manual = true) {
+  if (manual) { vulnSecsLeft = 300; updateVulnCountdown(); }
+  const list  = document.getElementById('vuln-list');
+  const stats = document.getElementById('vuln-stats');
+
+  try {
+    const res  = await fetch('/api/vuln-posture?severity=medium');
+    const data = await res.json();
+
+    if (data.error) {
+      list.innerHTML  = `<div class="error-pill" style="font-size:11px;">⚠️ ${esc(data.error)}</div>`;
+      stats.innerHTML = '';
+      return;
+    }
+
+    const hosts = data.hosts || [];
+
+    // ── Summary stat cards ────────────────────────────────────────────
+    const totalCrit = hosts.reduce((s,h) => s + (h.severities?.critical || 0), 0);
+    const totalHigh = hosts.reduce((s,h) => s + (h.severities?.high     || 0), 0);
+    const maxCvss   = hosts.reduce((m,h) => Math.max(m, h.max_cvss || 0), 0);
+
+    stats.innerHTML = `
+      <div class="stat-card">
+        <div class="stat-icon" style="background:var(--red-soft);">💀</div>
+        <div class="stat-body">
+          <div class="stat-value" style="color:var(--red)">${totalCrit}</div>
+          <div class="stat-label">Critical CVEs</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(251,99,64,.12);">🔥</div>
+        <div class="stat-body">
+          <div class="stat-value" style="color:var(--orange)">${totalHigh}</div>
+          <div class="stat-label">High CVEs</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:var(--accent-soft);">🖥️</div>
+        <div class="stat-body">
+          <div class="stat-value">${hosts.length}</div>
+          <div class="stat-label">Hosts scanned</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:var(--yellow-soft);">📊</div>
+        <div class="stat-body">
+          <div class="stat-value" style="color:${maxCvss >= 9 ? 'var(--red)' : maxCvss >= 7 ? 'var(--orange)' : 'var(--yellow)'}">${maxCvss.toFixed(1)}</div>
+          <div class="stat-label">Max CVSS</div>
+        </div>
+      </div>
+    `;
+
+    if (!hosts.length) {
+      list.innerHTML = `
+        <div class="empty-state">
+          🔍 No vulnerability data yet.<br>
+          <small style="display:block;margin-top:6px;font-size:10px;">
+            Deploy scanner on Rocky Linux:<br>
+            <code style="font-family:var(--font-mono)">sudo /opt/hayyan-scan/orchestrator.sh</code>
+          </small>
+        </div>`;
+      return;
+    }
+
+    // ── Per-host rows ─────────────────────────────────────────────────
+    list.innerHTML = hosts.map(h => {
+      const sevs  = h.severities || {};
+      const worst = sevs.critical ? 'critical' : sevs.high ? 'high' : 'medium';
+      const pills = Object.entries(sevs)
+        .filter(([,n]) => n > 0)
+        .sort((a,b) => {
+          const order = {critical:0,high:1,medium:2,low:3};
+          return (order[a[0]]??9) - (order[b[0]]??9);
+        })
+        .map(([s,n]) => `<span class="vuln-pill ${s}">${n} ${s}</span>`)
+        .join('');
+
+      const prompt = `Check the vulnerability posture of ${esc(h.target)} in the vuln_scans index. Show me the specific CVEs, their CVSS scores, and remediation steps. Also check if this host is being actively attacked right now.`;
+
+      return `
+        <div class="vuln-row ${worst}" onclick="sendQuick('${prompt}')">
+          <div class="vuln-host">${esc(h.target)}</div>
+          <div class="vuln-bars">${pills}</div>
+          <div class="vuln-cvss">Max CVSS ${(h.max_cvss||0).toFixed(1)} · click to investigate</div>
+        </div>
+      `;
+    }).join('');
+
+  } catch (e) {
+    list.innerHTML  = `<div class="error-pill" style="font-size:11px;">⚠️ ${esc(e.message)}</div>`;
+    stats.innerHTML = '';
+  }
+
+  // Also refresh the MISP status detail inside this panel
+  loadMispDetail();
+}
+
+async function loadMispDetail() {
+  const el = document.getElementById('misp-status-detail');
+  if (!el) return;
+  try {
+    const res  = await fetch('/api/misp/health');
+    const data = await res.json();
+
+    if (data.connected) {
+      el.innerHTML = `
+        <div class="stat-card" style="cursor:default;">
+          <div class="stat-icon" style="background:var(--green-soft);">⬡</div>
+          <div class="stat-body">
+            <div style="font-size:11.5px;font-weight:600;color:var(--green)">Connected</div>
+            <div class="stat-label">${esc(data.misp_url)} · v${esc(data.version||'?')}</div>
+          </div>
+        </div>`;
+    } else if (data.status === 'not_configured') {
+      el.innerHTML = `
+        <div class="stat-card" style="cursor:default;border-left:3px solid var(--yellow);">
+          <div class="stat-icon" style="background:var(--yellow-soft);">⬡</div>
+          <div class="stat-body">
+            <div style="font-size:11px;font-weight:600;color:var(--yellow)">Not Configured</div>
+            <div class="stat-label">Add MISP_API_KEY to .env</div>
+          </div>
+        </div>
+        <div style="font-size:10px;color:var(--text-muted);padding:4px 2px;">
+          Deploy: <code style="font-family:var(--font-mono);color:var(--accent)">docker compose -f docker-compose.misp.yml up -d</code>
+        </div>`;
+    } else {
+      el.innerHTML = `
+        <div class="stat-card" style="cursor:default;border-left:3px solid var(--red);">
+          <div class="stat-icon" style="background:var(--red-soft);">⬡</div>
+          <div class="stat-body">
+            <div style="font-size:11px;font-weight:600;color:var(--red)">Unreachable</div>
+            <div class="stat-label">${esc(data.message || 'Cannot connect to MISP')}</div>
+          </div>
+        </div>`;
+    }
+  } catch {
+    el.innerHTML = `<div class="empty-state" style="font-size:10.5px;">MISP check failed</div>`;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────
    Init
-───────────────────────────────────────────────── */
+───────────────────────────────────────────────────────────────── */
 connectWS();
-// Auto-load alerts on page load after 2s
-setTimeout(() => { loadAlerts(); loadIndexes(); }, 2000);
+
+// Load data after brief delay to let WS stabilize
+setTimeout(() => {
+  loadSystemStatus();
+  loadAlerts(false);
+  startAlertRefresh();
+  startIndexRefresh();
+  startVulnRefresh();
+}, 1200);
 </script>
 </body>
 </html>

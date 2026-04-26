@@ -1,0 +1,34 @@
+[Unit]
+Description=Hayyan SOC Vulnerability Scanner
+Documentation=https://github.com/hayyan-horizons/soc-lab
+# Don't run if network is down
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Run as root so Trivy can read all filesystem paths
+User=root
+Group=root
+
+ExecStart=/opt/hayyan-scan/orchestrator.sh
+
+# Logging — systemd journal captures stdout/stderr
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=hayyan-scan
+
+# Give the scan enough time (nuclei + trivy can take ~20 min on a large FS)
+TimeoutStartSec=1800
+
+# Don't restart on failure — timer handles retries
+Restart=no
+
+# Limit resource usage so the VM stays responsive
+# Nuclei and Trivy are both IO-bound, not CPU-bound
+CPUQuota=60%
+MemoryMax=512M
+IOWeight=100
+
+[Install]
+WantedBy=multi-user.target

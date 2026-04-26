@@ -1,0 +1,39 @@
+[Unit]
+Description=Hayyan SOC Vulnerability Scanner
+Documentation=file:///opt/hayyan-scan/README.md
+After=network-online.target
+Wants=network-online.target
+# Require Rocky to be fully up before scanning
+RequiresMountsFor=/opt/hayyan-scan
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+WorkingDirectory=/opt/hayyan-scan
+
+# Source HEC token and MISP key from env file
+EnvironmentFile=/opt/hayyan-scan/config/splunkhec.env
+
+ExecStart=/bin/bash /opt/hayyan-scan/orchestrator.sh
+
+# Logging — goes to systemd journal + orchestrator's own log file
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=hayyan-scan
+
+# Safety limits — scanner should complete within 2 hours
+TimeoutStartSec=7200
+TimeoutStopSec=60
+
+# Restart policy — don't auto-restart on failure; let admin investigate
+Restart=no
+
+# Security hardening
+NoNewPrivileges=false
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/hayyan-scan/logs /tmp
+
+[Install]
+WantedBy=multi-user.target

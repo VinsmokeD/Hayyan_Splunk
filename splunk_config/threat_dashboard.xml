@@ -1,0 +1,245 @@
+<dashboard version="1.1">
+  <label>Hayyan SOC — Threat-Informed Defense</label>
+  <description>Closed-loop SOC: Threat Intel + Vulnerability Exposure + Live Telemetry + AI Investigations</description>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       ROW 1: Intelligence Coverage Overview
+       ═══════════════════════════════════════════════════════════════════ -->
+  <row>
+    <panel>
+      <title>🛡️ MISP Threat Intel — IOC Coverage</title>
+      <single>
+        <search>
+          <query>| inputlookup misp_ioc_lookup.csv | stats count as total_iocs, dc(ioc_type) as type_count</query>
+          <earliest>-1d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="field">total_iocs</option>
+        <option name="underLabel">IOCs in Lookup</option>
+        <option name="colorMode">block</option>
+        <option name="rangeColors">["0xdc4e41","0xf8be34","0x53a051"]</option>
+        <option name="rangeValues">[0,100]</option>
+      </single>
+    </panel>
+
+    <panel>
+      <title>🔍 IOC Matches in Last 24h</title>
+      <single>
+        <search>
+          <query>index=linux_web OR index=sysmon OR index=windows_events
+            [| inputlookup misp_ioc_lookup.csv | rename ioc_value as clientip | fields clientip]
+            | stats count</query>
+          <earliest>-24h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="field">count</option>
+        <option name="underLabel">IOC Hits</option>
+        <option name="colorMode">block</option>
+        <option name="rangeColors">["0x53a051","0xf8be34","0xdc4e41"]</option>
+        <option name="rangeValues">[0,1]</option>
+      </single>
+    </panel>
+
+    <panel>
+      <title>⚠️ Critical Vulnerabilities Open</title>
+      <single>
+        <search>
+          <query>index=vuln_scans severity=critical | dedup cveid target | stats count</query>
+          <earliest>-30d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="field">count</option>
+        <option name="underLabel">Critical CVEs (30d)</option>
+        <option name="colorMode">block</option>
+        <option name="rangeColors">["0x53a051","0xf8be34","0xdc4e41"]</option>
+        <option name="rangeValues">[0,1]</option>
+      </single>
+    </panel>
+
+    <panel>
+      <title>🤖 AI Investigations (24h)</title>
+      <single>
+        <search>
+          <query>index=ai_soc_audit event_type=investigation_complete | stats count</query>
+          <earliest>-24h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="field">count</option>
+        <option name="underLabel">Completed Investigations</option>
+      </single>
+    </panel>
+  </row>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       ROW 2: Vulnerability Posture Heatmap + IOC Types Breakdown
+       ═══════════════════════════════════════════════════════════════════ -->
+  <row>
+    <panel>
+      <title>🗺️ Vulnerability Posture — Hosts by Severity</title>
+      <chart>
+        <search>
+          <query>index=vuln_scans
+            | dedup target, cveid
+            | stats count as findings by target, severity
+            | sort target, severity</query>
+          <earliest>-30d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.chart">bar</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.fieldColors">{"critical": "#dc4e41", "high": "#f8be34", "medium": "#f1813f", "low": "#53a051"}</option>
+        <option name="charting.axisTitleX.text">Host</option>
+        <option name="charting.axisTitleY.text">Finding Count</option>
+      </chart>
+    </panel>
+
+    <panel>
+      <title>📊 MISP IOC Type Distribution</title>
+      <chart>
+        <search>
+          <query>| inputlookup misp_ioc_lookup.csv | stats count by ioc_type | sort -count</query>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+      </chart>
+    </panel>
+  </row>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       ROW 3: IOC Match Timeline + Exposed & Attacked
+       ═══════════════════════════════════════════════════════════════════ -->
+  <row>
+    <panel>
+      <title>⏱️ IOC Match Timeline — Known-Bad IPs in Nginx</title>
+      <chart>
+        <search>
+          <query>index=linux_web
+            [| inputlookup misp_ioc_lookup.csv
+             | where ioc_type="ip-dst" OR ioc_type="ip-src"
+             | rename ioc_value as clientip | fields clientip]
+            | timechart count span=30m by clientip</query>
+          <earliest>-24h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.chart">area</option>
+        <option name="charting.axisTitleX.text">Time</option>
+        <option name="charting.axisTitleY.text">IOC Hit Count</option>
+      </chart>
+    </panel>
+
+    <panel>
+      <title>👑 EXPOSED + ATTACKED — Crown Jewel View</title>
+      <table>
+        <search>
+          <query>index=linux_web
+            [| inputlookup misp_ioc_lookup.csv
+             | where ioc_type="ip-dst" OR ioc_type="ip-src"
+             | rename ioc_value as clientip | fields clientip]
+            | stats count as web_hits by clientip
+            | join type=left clientip
+                [search index=vuln_scans severity IN (high,critical) earliest=-30d
+                 | rename target as clientip
+                 | stats count as vuln_count, max(cvssscore) as max_cvss, values(cveid) as cves by clientip]
+            | eval crown_jewel = if(isnotnull(max_cvss) AND max_cvss >= 7.0, "YES ⚠️", "no")
+            | table clientip, web_hits, vuln_count, max_cvss, cves, crown_jewel
+            | sort -max_cvss</query>
+          <earliest>-24h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <format type="color" field="crown_jewel">
+          <colorPalette type="map">{"YES ⚠️": "#dc4e41", "no": "#53a051"}</colorPalette>
+        </format>
+        <format type="color" field="max_cvss">
+          <colorPalette type="minMidMax" maxColor="#dc4e41" midColor="#f8be34" minColor="#53a051" maxValue="10" midValue="7" minValue="0"/>
+        </format>
+      </table>
+    </panel>
+  </row>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       ROW 4: AI Agent Audit + Scanner Health
+       ═══════════════════════════════════════════════════════════════════ -->
+  <row>
+    <panel>
+      <title>🤖 AI Agent — Tool Usage Audit (24h)</title>
+      <table>
+        <search>
+          <query>index=ai_soc_audit event_type=tool_call_complete
+            | stats count as calls, avg(elapsed_ms) as avg_ms, max(elapsed_ms) as max_ms by tool_name
+            | sort -calls
+            | eval avg_ms = round(avg_ms, 0)
+            | eval max_ms = round(max_ms, 0)</query>
+          <earliest>-24h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+
+    <panel>
+      <title>✅ AI Enrichment Quality — MISP + Vuln Checked</title>
+      <chart>
+        <search>
+          <query>index=ai_soc_audit event_type=investigation_complete
+            | eval enrichment_status = case(
+                misp_ioc_checked=true AND vuln_posture_checked=true, "Full Enrichment",
+                misp_ioc_checked=true, "MISP Only",
+                vuln_posture_checked=true, "Vuln Only",
+                1=1, "No Enrichment ⚠️")
+            | stats count by enrichment_status</query>
+          <earliest>-7d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="charting.fieldColors">{"Full Enrichment": "#53a051", "MISP Only": "#f8be34", "Vuln Only": "#f8be34", "No Enrichment ⚠️": "#dc4e41"}</option>
+      </chart>
+    </panel>
+
+    <panel>
+      <title>🔬 Last 10 Scan Runs</title>
+      <table>
+        <search>
+          <query>index=vuln_scans
+            | stats count as findings, min(cvssscore) as min_cvss, max(cvssscore) as max_cvss,
+              dc(target) as hosts_scanned, values(scanner) as scanners
+              by scanid
+            | sort -scanid
+            | head 10</query>
+          <earliest>-30d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <format type="color" field="max_cvss">
+          <colorPalette type="minMidMax" maxColor="#dc4e41" midColor="#f8be34" minColor="#53a051" maxValue="10" midValue="7" minValue="0"/>
+        </format>
+      </table>
+    </panel>
+  </row>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       ROW 5: Retrospective Hunt Results
+       ═══════════════════════════════════════════════════════════════════ -->
+  <row>
+    <panel>
+      <title>🕵️ Retrospective Hunt — IOCs in Historical Logs (7d)</title>
+      <table>
+        <search>
+          <query>index=linux_web earliest=-7d
+            [| inputlookup misp_ioc_lookup.csv
+             | where ioc_type="ip-dst" OR ioc_type="ip-src"
+             | rename ioc_value as clientip | fields clientip]
+            | stats count as hits, min(_time) as first_seen, max(_time) as last_seen,
+              dc(request) as unique_paths, values(status) as status_codes by clientip
+            | eval first_seen = strftime(first_seen, "%Y-%m-%d %H:%M")
+            | eval last_seen = strftime(last_seen, "%Y-%m-%d %H:%M")
+            | sort -hits</query>
+          <earliest>-7d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+</dashboard>

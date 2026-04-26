@@ -1,0 +1,87 @@
+# MISP Threat Intelligence Platform — Hayyan SOC Lab
+# Deploy: docker compose -f docker-compose.misp.yml up -d
+# UI:     https://localhost:8443  (admin@admin.test / admin — change immediately)
+# API:    https://localhost:8443  (use Bearer token from UI → Administration → Auth Keys)
+#
+# Port selection avoids conflicts with existing lab services:
+#   8080 → Splunk Web UI (already in use)
+#   8088 → Splunk HEC   (already in use)
+#   8089 → Splunk REST  (already in use)
+#   8443 → MISP HTTPS  (new)
+#   8080 → MISP HTTP   (redirects to 8443)
+
+version: "3.8"
+
+services:
+
+  misp:
+    image: coolacid/misp-docker:core-latest
+    container_name: hayyan-misp
+    restart: unless-stopped
+    ports:
+      - "8443:443"
+      - "8081:80"
+    environment:
+      # Base URL — used for internal links in MISP
+      - MISP_BASEURL=https://localhost:8443
+      - MISP_ADMIN_EMAIL=admin@admin.test
+      # Change this password after first login via UI
+      - MISP_ADMIN_PASSPHRASE=Hayyan@2024!MISP
+      - MISP_ORG=Hayyan-Horizons
+      - MISP_SALT=HayyanSOCLabSalt2024
+      # Disable SSL verification between containers (internal)
+      - MISP_DISABLE_SSL_REDIRECT=false
+      # DB connection
+      - MYSQL_HOST=misp-db
+      - MYSQL_PORT=3306
+      - MYSQL_USER=misp
+      - MYSQL_PASSWORD=misp_db_pass_2024
+      - MYSQL_DATABASE=misp
+      # Redis
+      - REDIS_FQDN=misp-redis
+    volumes:
+      - misp-data:/var/www/MISP/app/files
+      - misp-logs:/var/www/MISP/app/tmp/logs
+    depends_on:
+      - misp-db
+      - misp-redis
+    networks:
+      - misp-net
+
+  misp-db:
+    image: mysql:8.0
+    container_name: hayyan-misp-db
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=misp_root_pass_2024
+      - MYSQL_DATABASE=misp
+      - MYSQL_USER=misp
+      - MYSQL_PASSWORD=misp_db_pass_2024
+    volumes:
+      - misp-db-data:/var/lib/mysql
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --max_allowed_packet=500M
+    networks:
+      - misp-net
+
+  misp-redis:
+    image: redis:7-alpine
+    container_name: hayyan-misp-redis
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - misp-redis-data:/data
+    networks:
+      - misp-net
+
+volumes:
+  misp-data:
+  misp-logs:
+  misp-db-data:
+  misp-redis-data:
+
+networks:
+  misp-net:
+    driver: bridge

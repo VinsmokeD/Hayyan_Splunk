@@ -1,0 +1,14 @@
+[Unit]
+Description=Hayyan SOC Vulnerability Scanner — Daily Timer
+Documentation=https://github.com/hayyan-horizons/soc-lab
+
+[Timer]
+# Run daily at 02:30 Rocky local time
+OnCalendar=*-*-* 02:30:00
+# If system was off at 02:30, run within 5 minutes of next boot
+Persistent=true
+# Add random delay up to 10 minutes to avoid hammering all at exactly 02:30
+RandomizedDelaySec=600
+
+[Install]
+WantedBy=timers.target

@@ -148,7 +148,8 @@ class SplunkClient:
         return results_resp.json().get("results", [])
 
     def get_triggered_alerts(self) -> list[dict]:
-        """Return all currently triggered (fired) alerts."""
+        """Return all currently triggered (fired) alerts, enriched with severity from saved searches."""
+        # Fetch fired alerts
         resp = self.session.get(
             self._url("/services/alerts/fired_alerts"),
             params={"output_mode": "json", "count": 50},
@@ -156,16 +157,38 @@ class SplunkClient:
         )
         resp.raise_for_status()
         entries = resp.json().get("entry", [])
-        return [
-            {
-                "name": e["name"],
+
+        # Build severity map from saved searches (1=info,2=low,3=medium,4=high,5=critical)
+        _sev_map = {1: "info", 2: "low", 3: "medium", 4: "high", 5: "critical"}
+        sev_by_name: dict[str, str] = {}
+        try:
+            sr = self.session.get(
+                self._url("/services/saved/searches"),
+                params={"output_mode": "json", "count": 50},
+                timeout=10,
+            )
+            if sr.status_code == 200:
+                for e in sr.json().get("entry", []):
+                    sev_num = e["content"].get("alert.severity")
+                    if sev_num is not None:
+                        sev_by_name[e["name"]] = _sev_map.get(int(sev_num), "medium")
+        except Exception:
+            pass
+
+        results = []
+        for e in entries:
+            name = e.get("name", "")
+            if not name or name == "-":
+                continue
+            count = e["content"].get("triggered_alert_count") or e["content"].get("triggered_count")
+            results.append({
+                "name": name,
                 "trigger_time": e["content"].get("trigger_time"),
-                "severity": e["content"].get("severity"),
-                "count": e["content"].get("triggered_count"),
-                "savedsearch_name": e["content"].get("savedsearch_name", ""),
-            }
-            for e in entries
-        ]
+                "severity": sev_by_name.get(name, "medium"),
+                "count": int(count) if count else None,
+                "savedsearch_name": name,
+            })
+        return results
 
     def get_index_stats(self) -> list[dict]:
         """Return event counts and sizes per index."""

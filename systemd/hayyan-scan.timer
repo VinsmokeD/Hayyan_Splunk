@@ -1,0 +1,23 @@
+[Unit]
+Description=Hayyan SOC Vulnerability Scanner Timer
+Documentation=file:///opt/hayyan-scan/README.md
+Requires=hayyan-scan.service
+
+[Timer]
+# ── Full scan: daily at 02:30 (low-traffic window) ───────────────────────────
+OnCalendar=*-*-* 02:30:00
+
+# ── Nuclei-only midday check ──────────────────────────────────────────────────
+# Uncomment to add a second daily scan window:
+# OnCalendar=*-*-* 12:00:00
+
+# Randomize start within a 10-minute window to avoid thundering-herd on shared labs
+RandomizedDelaySec=600
+
+# Run the scan even if the system was off at the scheduled time (catch-up)
+Persistent=true
+
+Unit=hayyan-scan.service
+
+[Install]
+WantedBy=timers.target
