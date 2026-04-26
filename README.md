@@ -1,152 +1,122 @@
-# Hayyan SOC — Autonomous AI Threat Investigator
+# Hayyan SOC — Threat-Informed AI Defense System 🛡️🤖
 
-Enterprise-grade LangGraph + LangChain multi-agent SOC system powered by Google Gemini. Autonomous Tier-1 analyst that watches Splunk, investigates alerts, and generates incident reports.
+**Commercial-grade, closed-loop cybersecurity training and operations platform.**
 
-## Architecture
+Hayyan SOC (v3.0) transforms traditional reactive monitoring into a proactive, intelligence-driven defense system. Powered by **Google Gemini** and **LangGraph**, it integrates real-time telemetry with global threat intelligence and automated vulnerability exposure analysis.
 
+---
+
+## 🏛️ Architecture: The Feedback Triangle
+
+Hayyan SOC operates on a continuous feedback loop between three core pillars:
+
+1.  **Threat Intelligence (MISP)**: Real-time ingestion of malicious indicators (IPs, domains, hashes) from global feeds (CIRCL, URLhaus, Abuse.ch).
+2.  **Vulnerability Exposure (Nuclei/Trivy)**: Automated daily scanning of the lab environment (Rocky Linux, DC01, Containers) to map the attack surface.
+3.  **Live Telemetry (Splunk)**: Centralized logs from Windows AD (Sysmon/EventLogs), Linux Auditd, and Nginx web servers.
+
+```mermaid
+graph TD
+    subgraph "Intelligence & Exposure"
+    MISP[MISP Threat Intel] <--> Agent
+    Scanner[Nuclei/Trivy Scanner] --> Splunk
+    end
+
+    subgraph "Operational Layer"
+    Splunk[(Splunk SIEM)] <--> Agent
+    Agent{AI SOC Agent} <--> Analyst([Human Analyst])
+    end
+
+    subgraph "Infrastructure"
+    DC01[Windows DC01] --> Splunk
+    Rocky[Rocky Web Server] --> Splunk
+    end
+
+    Agent -- "Risk Context" --> Analyst
+    Scanner -- "Vulnerabilities" --> MISP
+    MISP -- "IOC Match" --> Splunk
 ```
-User (Browser UI)
-  └─► FastAPI WebSocket (/ws/chat)
-        └─► LangGraph SOC Workflow
-              ├─► Triage Node        — classifies intent, routes to specialist
-              ├─► Query Specialist   — expert SPL, runs Splunk searches
-              ├─► Alert Triage       — fetches & analyzes fired alerts
-              ├─► Investigator       — deep-dive threat investigation
-              ├─► Report Agent       — IOC + MITRE ATT&CK reports
-              └─► Synthesize Node    — final actionable report
-                    └─► Splunk REST Client (port 8089)
-                          └─► Splunk SIEM
-                                ├─► index=windows_events (AD, Sysmon)
-                                ├─► index=linux_audit
-                                ├─► index=linux_web
-                                └─► index=linux_secure
-```
 
-## Environment
+---
 
-- **AD Domain**: hayyan.local — DC01 @ 192.168.56.10
-- **Rocky Linux**: 192.168.56.20
-- **Splunk indexes**: linux_audit, linux_web, linux_secure, windows_events, sysmon
-- **Known users**: akhalil, snasser, svc_it, jdoe, jsmith
+## 🚀 Key Features
 
-## Quick Start
+### 🧠 Autonomous AI Investigator
+- **ReAct Agent Architecture**: Chains multiple tools to investigate alerts end-to-end.
+- **Resilient LLM Routing**: Primary (OpenRouter/DeepSeek) → Fallback (Groq/Llama) → Offline (Ollama/Qwen).
+- **Audit Trail**: Every AI decision and tool call is logged to `ai_soc_audit` for full transparency.
+
+### 🛡️ Threat-Informed Detection
+- **Risk-Adjusted Alerting**: Alerts are automatically elevated if the target host has unpatched critical vulnerabilities (CVSS >= 9.0).
+- **MISP Integration**: Automated lookup of every suspicious indicator against local and global threat intel.
+- **Retrospective Hunting**: Daily "Hunt" searches that check if new MISP IOCs appeared in your logs over the last 7 days.
+
+### 🔬 Integrated Scanner Pack
+- **Nuclei**: Automated web and network service vulnerability scanning.
+- **Trivy**: Deep filesystem and container image security auditing.
+- **Systemd Orchestration**: Scheduled scans with normalized schema delivery via Splunk HEC.
+
+---
+
+## 🛠️ Tech Stack
+
+- **AI Framework**: LangChain, LangGraph, Pydantic AI
+- **LLMs**: Google Gemini 2.5 Flash, DeepSeek-V3, Llama 3.3 (70B), Qwen 3 (4B)
+- **SIEM**: Splunk Enterprise (HEC + REST API)
+- **Threat Intel**: MISP (Malware Information Sharing Platform)
+- **Scanners**: ProjectDiscovery Nuclei, Aqua Security Trivy
+- **Frontend**: Streamlit (Dashboard) + Tailwind/FastAPI (Chat)
+
+---
+
+## 🏁 Quick Start
 
 ### 1. Prerequisites
+- Docker & Docker Compose
 - Python 3.10+
-- Splunk Enterprise (Docker or on-prem) with REST API on port 8089
-- Google Gemini API Key (free tier works)
+- API Keys: Google Gemini (Primary) or OpenRouter (Secondary)
 
-### 2. Install & Setup
+### 2. Deployment
 ```bash
-# Windows PowerShell
+# Clone and setup env
+git clone https://github.com/VinsmokeD/Hayyan_Splunk.git
+cd Hayyan_Splunk
 python -m venv .venv
 .venv\Scripts\Activate.ps1
-
-# Mac/Linux bash
-python -m venv .venv
-source .venv/bin/activate
-
-# Install dependencies
 pip install -r requirements.txt
+
+# Start Infrastructure (Splunk + MISP)
+docker compose up -d
+docker compose -f docker-compose.misp.yml up -d
+
+# Initialize AI & Threat Intel
+bash scripts/misp_setup.sh
+python scripts/misp_sync_splunk.py
 ```
 
-### 3. Configure `.env`
-Copy `.env.example` to `.env` and fill in:
-```
-GOOGLE_API_KEY=your_gemini_api_key_here
-SPLUNK_HOST=192.168.56.1
-SPLUNK_PORT=8089
-SPLUNK_USERNAME=admin
-SPLUNK_PASSWORD=Hayyan@2024!
-SPLUNK_SCHEME=https
-MODEL_NAME=gemini-2.5-flash
-```
-
-### 4. Initialize Knowledge Base
+### 3. Launch
 ```bash
-python soc_agents/knowledge/build_kb.py
-```
+# Terminal 1: AI API
+python -m uvicorn soc_agents.api.app:app --host 0.0.0.0 --port 8500
 
-### 5. Run the System
-```bash
-# Terminal 1: Start API server
-python -m uvicorn soc_agents.api.app:app --host 0.0.0.0 --port 8500 --reload
-
-# Terminal 2 (optional): Run Streamlit dashboard
+# Terminal 2: Dashboard
 streamlit run soc_agents/ui/streamlit_app.py
 ```
 
-Open **http://localhost:8500** for web UI or **http://localhost:8501** for dashboard.
+---
 
-## API Endpoints
+## 🚨 Active Detections & Dashboards
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET`  | `/` | Chat UI |
-| `POST` | `/api/chat` | Single-turn chat (returns full report) |
-| `WS`   | `/ws/chat` | Streaming multi-turn chat |
-| `GET`  | `/api/health` | Health check (Splunk + API status) |
-| `GET`  | `/api/alerts` | Live triggered Splunk alerts |
-| `GET`  | `/api/indexes` | Splunk index stats |
-| `GET`  | `/docs` | FastAPI auto-docs (Swagger) |
+Access the **Threat-Informed Defense Dashboard** in Splunk to view:
+- **Exposed + Attacked**: A crown-jewel view of hosts under active scan with high CVSS vulnerabilities.
+- **IOC Match Timeline**: Real-time correlation of MISP intelligence hits.
+- **AI Agent Audit**: Performance and quality metrics for autonomous investigations.
 
-## Agent Capabilities
+---
 
-### 🎯 Triage
-Auto-routes your request to the right specialist based on intent.
+## 📜 Security & Trust
+- **Sandboxed Execution**: All attack simulations target isolated Docker containers.
+- **HITL (Human-in-the-Loop)**: AI is restricted from performing destructive actions without explicit analyst approval.
+- **Privacy**: No telemetry or credentials leave the local lab environment.
 
-### 🔍 Query Specialist
-- Runs expert SPL queries against all indexes
-- Enriches results with field stats
-- Identifies anomalies and suggests follow-up queries
-
-### 🚨 Alert Triage
-- Fetches all currently fired Splunk alerts
-- Assigns MITRE ATT&CK tactic/technique
-- Recommends immediate containment actions
-
-### 🕵️ Investigator
-- Deep-dive threat investigations (IP, user, incident)
-- Chains queries to build event timelines
-- Maps to MITRE ATT&CK framework
-- Concludes with confirmed/suspected/false positive verdict
-
-### 📋 Report Writer
-- Executive summary + technical findings
-- Full MITRE ATT&CK mapping table
-- IOC list (IPs, users, domains, hashes)
-- Actionable containment and mitigation steps
-- Monitoring SPL queries
-
-## Project Structure
-
-```
-Hayyan_Splunk/
-├── main.py                    # Entry point (uvicorn)
-├── requirements.txt
-├── pyproject.toml             # black + mypy config
-├── .env                       # Runtime secrets (git-ignored)
-├── .env.example               # Template
-├── setup.ps1                  # One-time setup
-├── run.ps1                    # Start server
-└── soc_agents/
-    ├── core/
-    │   ├── config.py          # Pydantic settings
-    │   ├── models.py          # LangGraph SOCState
-    │   └── splunk_client.py   # Splunk REST client
-    ├── tools/
-    │   └── splunk_tools.py    # LangChain @tool definitions
-    ├── agents/
-    │   └── soc_graph.py       # LangGraph workflow
-    ├── api/
-    │   └── app.py             # FastAPI + WebSocket
-    └── ui/
-        └── index.html         # SOC chat interface
-```
-
-## Security Notes
-
-- All Splunk communication stays within the local network
-- No credentials are logged or exposed in API responses
-- WebSocket connections are scoped to a single `thread_id` session
-- `.env` is git-ignored — never commit API keys
+---
+**Hayyan SOC — Developed for Advanced Cybersecurity Training.**
