@@ -11,7 +11,7 @@ def test_splunk_client_init():
     try:
         client = SplunkClient()
         assert client._host is not None
-        assert client._port == 8089
+        assert client._port == 8088
     except Exception as e:
         pytest.skip(f"Splunk not available: {e}")
 

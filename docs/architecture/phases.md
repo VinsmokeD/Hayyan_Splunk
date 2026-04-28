@@ -44,7 +44,7 @@ Dependencies: Docker running on host
 ```
 PHASE 3.2: Rocky Scanner Infrastructure
 Goal: Automated vulnerability scanning from Rocky with normalized findings in Splunk.
-Acceptance: vulnscans index has JSON events with standard schema after a scan run.
+Acceptance: vuln_scans index has JSON events with standard schema after a scan run.
 Files:
   - scripts/rocky/targets.yaml
   - scripts/rocky/nuclei-web.sh
@@ -64,8 +64,8 @@ Dependencies: Phase 3.1 complete (HEC token configured)
 ### Phase 3.3 — AI Agent Audit Layer + Realism Simulation
 ```
 PHASE 3.3: Agent Audit + Rogue Scan Simulation
-Goal: Log every agent tool call to aisocaudit index. Add authorized vs rogue scan demo.
-Acceptance: aisocaudit index has entries after an investigation. Rogue scan triggers alert.
+Goal: Log every agent tool call to ai_soc_audit index. Add authorized vs rogue scan demo.
+Acceptance: ai_soc_audit index has entries after an investigation. Rogue scan triggers alert.
 Files:
   - soc_agents/tools/audit_tools.py
   - soc_agents/agents/soc_graph.py (wire audit)
@@ -96,7 +96,21 @@ Dependencies: Phase 3.3 complete
 **Acceptance:** Debrief view shows scan → IOC hit → detection → AI report as a chronological story.
 **Status:** 🔲 PLANNED
 
-## PHASE 5: Retrospective Threat Hunting [PLANNED]
-**Goal:** Weekly scheduled Splunk search pulls fresh MISP IOCs and hunts historical logs.
-**Acceptance:** Hunt finds at least one simulated IOC match in historical index.
-**Status:** 🔲 PLANNED
+## PHASE 5: Retrospective Threat Hunting [IMPLEMENTED]
+**Goal:** Scheduled and agent-driven Splunk hunts compare newly synced MISP IOCs against historical logs.
+**Acceptance:** `hunt_recent_misp_iocs` can search web, DNS, Sysmon hash, and Windows evidence for IOCs imported in the last 24 hours, and the saved search `HUNT - New MISP IOCs Against Historical Linux Web Logs` runs daily.
+**Status:** ✅ COMMITTED
+
+### Phase 5.1 - Agent-Driven Retrospective Hunt
+```
+PHASE 5.1: New MISP IOCs vs Historical Logs
+Goal: Let the AI analyst answer: "Did this newly imported IOC already appear in our old logs?"
+Acceptance: Agent calls hunt_recent_misp_iocs and returns categorized historical hits.
+Files:
+  - soc_agents/tools/splunk_tools.py
+  - soc_agents/agents/soc_graph.py
+  - scripts/misp_sync_splunk.py
+  - splunk_config/risk_adjusted_alerts.conf
+Dependencies: MISP lookup export includes sync_epoch.
+```
+**Status:** ✅ COMMITTED

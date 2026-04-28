@@ -1,7 +1,7 @@
 """
 Hayyan SOC Lab — Agent Audit Logging Tool
 ==========================================
-Logs every AI SOC agent tool call to the Splunk aisocaudit index
+Logs every AI SOC agent tool call to the Splunk ai_soc_audit index
 via HEC. This gives you full observability into agent behaviour:
 - Which tools were called during each investigation
 - How long each tool took
@@ -45,7 +45,7 @@ def _load_env() -> dict:
 
 _env = _load_env()
 
-_HEC_URL   = _env.get("SPLUNK_HEC_URL", "https://localhost:8088")
+_HEC_URL   = _env.get("SPLUNK_HEC_URL", "http://localhost:8086")
 _HEC_TOKEN = _env.get("SPLUNK_HEC_TOKEN", "")
 _AUDIT_INDEX = "ai_soc_audit"
 _AGENT_ID = "hayyan-soc-agent-v1"
@@ -103,7 +103,7 @@ def audit_tool_call(
     thread_id: str = "unknown",
 ) -> Generator[dict, None, None]:
     """
-    Context manager that records a tool call start/finish to aisocaudit.
+    Context manager that records a tool call start/finish to ai_soc_audit.
 
     Usage:
         result_holder = {}

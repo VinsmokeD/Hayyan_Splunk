@@ -96,7 +96,7 @@ On Rocky Linux:
 ```bash
 cat > /opt/hayyan-scan/config/splunkhec.env << 'EOF'
 # Splunk HEC Configuration — DO NOT COMMIT THIS FILE
-SPLUNK_HEC_URL=https://192.168.56.1:8088
+SPLUNK_HEC_URL=http://192.168.56.1:8086
 SPLUNK_HEC_TOKEN=YOUR_TOKEN_HERE
 MISP_URL=https://192.168.56.1:8443
 MISP_API_KEY=YOUR_MISP_KEY_HERE
@@ -115,7 +115,7 @@ Edit `/opt/hayyan-scan/config/targets.yaml` and verify the target IPs match your
 Key targets:
 - `http://192.168.56.10` — DC01 (Windows Server)
 - `http://192.168.56.20` — Rocky Linux self-scan
-- `https://localhost:8443` — MISP (self-scan for operational maturity)
+- `https://192.168.56.1:8443` — MISP (self-scan for operational maturity)
 
 ---
 

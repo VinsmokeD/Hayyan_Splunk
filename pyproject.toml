@@ -21,3 +21,6 @@ warn_unused_ignores = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = "test_*.py"
+markers = [
+    "integration: tests that require live external services such as Splunk",
+]

@@ -17,10 +17,11 @@ import csv
 import json
 import logging
 import os
+import subprocess
 import sys
 import time
 import argparse
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
@@ -44,18 +45,20 @@ def _load_env():
 
 _env = {**_load_env(), **os.environ}
 
-MISP_URL = _env.get("MISP_URL", "https://localhost:8443").rstrip("/")
+MISP_URL = _env.get("MISP_URL", "https://127.0.0.1:8443").rstrip("/")
 MISP_API_KEY = _env.get("MISP_API_KEY", "")
 MISP_VERIFY_SSL = _env.get("MISP_VERIFY_SSL", "false").lower() == "true"
 SPLUNK_HOST = _env.get("SPLUNK_HOST", "localhost")
 SPLUNK_PORT = int(_env.get("SPLUNK_PORT", "8088"))
+SPLUNK_SCHEME = _env.get("SPLUNK_SCHEME", "https").lower()
 SPLUNK_USERNAME = _env.get("SPLUNK_USERNAME", "admin")
-SPLUNK_PASSWORD = _env.get("SPLUNK_PASSWORD", "Hayyan@2024!")
+SPLUNK_PASSWORD = _env.get("SPLUNK_PASSWORD", "")
 SPLUNK_VERIFY_SSL = _env.get("SPLUNK_VERIFY_SSL", "false").lower() == "true"
 
 OUTPUT_DIR = Path(__file__).parent.parent / "data"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 OUTPUT_CSV = OUTPUT_DIR / "misp_ioc_lookup.csv"
+OUTPUTLOOKUP_MAX_ROWS = int(_env.get("SPLUNK_OUTPUTLOOKUP_MAX_ROWS", "200"))
 
 # IOC attribute types to pull (skip internal-only types)
 WANTED_TYPES = {
@@ -113,6 +116,9 @@ def fetch_misp_iocs(limit: int = 5000) -> list[dict]:
 def normalize_to_lookup(attrs: list[dict]) -> list[dict]:
     """Convert raw MISP attributes to flat CSV rows."""
     rows = []
+    sync_dt = datetime.now(timezone.utc)
+    sync_time = sync_dt.isoformat().replace("+00:00", "Z")
+    sync_epoch = int(sync_dt.timestamp())
     for attr in attrs:
         # Extract tags
         tags = [t.get("name", "") for t in attr.get("Tag", [])]
@@ -141,7 +147,8 @@ def normalize_to_lookup(attrs: list[dict]) -> list[dict]:
             "timestamp": attr.get("timestamp", ""),
             "category": attr.get("category", ""),
             "to_ids": str(attr.get("to_ids", False)),
-            "sync_time": datetime.utcnow().isoformat() + "Z",
+            "sync_time": sync_time,
+            "sync_epoch": sync_epoch,
         })
     return rows
 
@@ -162,31 +169,130 @@ def write_csv(rows: list[dict]) -> int:
     return len(rows)
 
 
+def _splunk_escape(value: str) -> str:
+    """Escape a value for a double-quoted SPL eval string."""
+    return str(value).replace("\\", "\\\\").replace('"', '\\"').replace("\r", " ").replace("\n", " ")
+
+
+def push_lookup_via_outputlookup(csv_path: Path) -> bool:
+    """Fallback: write a small lookup file through a controlled outputlookup search."""
+    try:
+        with open(csv_path, newline="", encoding="utf-8") as handle:
+            rows = list(csv.DictReader(handle))
+    except Exception as exc:
+        log.warning("Could not read %s for outputlookup fallback: %s", csv_path, exc)
+        return False
+
+    if not rows:
+        log.warning("No rows available for outputlookup fallback.")
+        return False
+    if len(rows) > OUTPUTLOOKUP_MAX_ROWS:
+        log.warning(
+            "Skipping outputlookup fallback: %d rows exceeds SPLUNK_OUTPUTLOOKUP_MAX_ROWS=%d.",
+            len(rows),
+            OUTPUTLOOKUP_MAX_ROWS,
+        )
+        return False
+
+    fields = list(rows[0].keys())
+    append_parts = []
+    for row in rows:
+        eval_parts = [f'{field}="{_splunk_escape(row.get(field, ""))}"' for field in fields]
+        append_parts.append(f'| append [ | makeresults | eval {", ".join(eval_parts)} ]')
+
+    search = (
+        "| makeresults count=0 "
+        + " ".join(append_parts)
+        + " | fields "
+        + " ".join(fields)
+        + f" | outputlookup {csv_path.name}"
+    )
+    url = f"{SPLUNK_SCHEME}://{SPLUNK_HOST}:{SPLUNK_PORT}/services/search/jobs"
+    try:
+        response = requests.post(
+            url,
+            auth=(SPLUNK_USERNAME, SPLUNK_PASSWORD),
+            data={
+                "search": search,
+                "exec_mode": "blocking",
+                "output_mode": "json",
+            },
+            verify=SPLUNK_VERIFY_SSL,
+            timeout=60,
+        )
+        if response.status_code in (200, 201):
+            log.info("Lookup written through outputlookup fallback (%d rows).", len(rows))
+            return True
+        log.warning("outputlookup fallback returned HTTP %s: %s", response.status_code, response.text[:200])
+    except Exception as exc:
+        log.warning("outputlookup fallback failed: %s", exc)
+    return False
+
+
 def push_to_splunk_lookup(csv_path: Path) -> bool:
     """Push the CSV to Splunk as a lookup table via REST API."""
-    # Upload to Splunk's lookup files endpoint
-    splunk_rest = f"https://{SPLUNK_HOST}:{SPLUNK_PORT}"
-    url = f"{splunk_rest}/servicesNS/nobody/search/data/lookup-table-files"
+    if not SPLUNK_PASSWORD:
+        log.warning("SPLUNK_PASSWORD is not set; skipping Splunk REST lookup upload.")
+        return False
 
-    log.info("Pushing lookup to Splunk at %s ...", url)
+    # Upload to Splunk's lookup files endpoint
+    splunk_rest = f"{SPLUNK_SCHEME}://{SPLUNK_HOST}:{SPLUNK_PORT}"
+    collection_url = f"{splunk_rest}/servicesNS/nobody/search/data/lookup-table-files"
+    item_url = f"{collection_url}/{csv_path.name}"
+
+    log.info("Pushing lookup to Splunk at %s ...", collection_url)
     try:
         with open(csv_path, "rb") as f:
             resp = requests.post(
-                url,
+                collection_url,
                 auth=(SPLUNK_USERNAME, SPLUNK_PASSWORD),
+                data={"name": csv_path.name, "output_mode": "json"},
                 files={"eai:data": ("misp_ioc_lookup.csv", f, "text/csv")},
                 verify=SPLUNK_VERIFY_SSL,
                 timeout=30,
             )
-        if resp.status_code in (200, 201, 409):  # 409 = already exists (update needed)
+        if resp.status_code in (200, 201):
             log.info("Lookup file uploaded to Splunk (HTTP %s)", resp.status_code)
             return True
-        else:
-            log.warning("Splunk lookup upload returned HTTP %s: %s", resp.status_code, resp.text[:200])
-            return False
+        log.warning("Splunk lookup create returned HTTP %s: %s", resp.status_code, resp.text[:200])
+
+        # Existing lookup files are updated through the named endpoint.
+        with open(csv_path, "rb") as f:
+            update_resp = requests.post(
+                item_url,
+                auth=(SPLUNK_USERNAME, SPLUNK_PASSWORD),
+                data={"output_mode": "json"},
+                files={"eai:data": ("misp_ioc_lookup.csv", f, "text/csv")},
+                verify=SPLUNK_VERIFY_SSL,
+                timeout=30,
+            )
+        if update_resp.status_code in (200, 201):
+            log.info("Lookup file updated in Splunk (HTTP %s)", update_resp.status_code)
+            return True
+        log.warning(
+            "Splunk lookup update returned HTTP %s: %s",
+            update_resp.status_code,
+            update_resp.text[:200],
+        )
     except Exception as e:
         log.error("Splunk push failed: %s", e)
-        return False
+
+    if push_lookup_via_outputlookup(csv_path):
+        return True
+
+    # Fallback for local Docker lab where REST upload may reject multipart handling.
+    configured = _env.get("SPLUNK_CONTAINER", "").strip()
+    candidates = [configured] if configured else []
+    candidates.extend(["hayyan-splunk", "splunk"])
+    for container in [c for i, c in enumerate(candidates) if c and c not in candidates[:i]]:
+        lookup_dest = f"{container}:/opt/splunk/etc/apps/search/lookups/{csv_path.name}"
+        try:
+            subprocess.run(["docker", "cp", str(csv_path), lookup_dest], check=True, capture_output=True, text=True)
+            log.info("Lookup copied via Docker fallback to %s", lookup_dest)
+            return True
+        except Exception as e:
+            log.warning("Splunk Docker fallback failed for container %s: %s", container, e)
+    return False
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -226,7 +332,9 @@ def main():
 
     written = write_csv(unique_rows)
     if written > 0:
-        push_to_splunk_lookup(OUTPUT_CSV)
+        if not push_to_splunk_lookup(OUTPUT_CSV):
+            log.error("IOC CSV was written locally, but could not be delivered to Splunk lookup storage.")
+            sys.exit(1)
 
     elapsed = time.time() - start
     log.info("Sync complete: %d IOCs in %.1fs", written, elapsed)

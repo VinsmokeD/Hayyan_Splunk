@@ -85,7 +85,7 @@ python -m venv .venv
 pip install -r requirements.txt
 
 # Start Infrastructure (Splunk + MISP)
-docker compose up -d
+docker compose -f docker-compose.splunk.yml up -d
 docker compose -f docker-compose.misp.yml up -d
 
 # Initialize AI & Threat Intel
@@ -110,6 +110,20 @@ Access the **Threat-Informed Defense Dashboard** in Splunk to view:
 - **Exposed + Attacked**: A crown-jewel view of hosts under active scan with high CVSS vulnerabilities.
 - **IOC Match Timeline**: Real-time correlation of MISP intelligence hits.
 - **AI Agent Audit**: Performance and quality metrics for autonomous investigations.
+
+Quick links:
+- Splunk UI: http://localhost:8080
+- HayyanSOC Dashboard: http://localhost:8080/en-US/app/HayyanSOC/threat_dashboard
+- Splunk REST API: https://localhost:8088
+- Splunk HEC endpoint: http://localhost:8086/services/collector/event
+- MISP UI: https://127.0.0.1:8443
+
+Final hardening docs:
+- docs/final/FINAL_CORRECTED_DOCS.md
+- docs/final/IOC_DATA_FLOW_ONE_PAGER.md
+- docs/final/DEMO_SCRIPT_3_MIN.md
+- docs/final/API_KEY_ROTATION_STEP.md
+- docs/final/READINESS_CHECKLIST.md
 
 ---
 

@@ -1,0 +1,28 @@
+services:
+  splunk:
+    image: splunk/splunk:latest
+    container_name: splunk
+    restart: unless-stopped
+    environment:
+      - SPLUNK_START_ARGS=--accept-license --accept-sgt-current-at-splunk-com --answer-yes
+      - SPLUNK_GENERAL_TERMS=--accept-sgt-current-at-splunk-com
+      - SPLUNK_PASSWORD=Hayyan@2024!
+      - SPLUNK_HEC_TOKEN=12345678-1234-1234-1234-1234567890AB
+      - SPLUNK_APPS_URL=
+    command: start
+    ports:
+      - "8080:8000"  # Splunk Web UI
+      - "8088:8089"  # Splunk REST API
+      - "8086:8088"  # Splunk HEC
+      - "9997:9997"  # Forwarder ingestion
+    volumes:
+      - splunk-etc:/opt/splunk/etc
+      - splunk-var:/opt/splunk/var
+
+volumes:
+  splunk-etc:
+    external: true
+    name: splunk-lab_splunk-etc
+  splunk-var:
+    external: true
+    name: splunk-lab_splunk-var

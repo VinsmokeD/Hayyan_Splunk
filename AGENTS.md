@@ -1,4 +1,4 @@
-# Hayyan Horizons SOC Lab — Claude Code Context
+# Hayyan Horizons SOC Lab — Codex Context
 
 ## Project Overview
 A full Splunk SIEM home lab built on a single Windows 11 laptop (16GB RAM) using VMware Workstation.
@@ -533,7 +533,7 @@ class SOCState(TypedDict):
 
 ```
 hayyan-ai-soc/
-├── CLAUDE.md                        ← this file
+├── AGENTS.md                        ← this file
 ├── README.md
 ├── .env                             ← never commit this
 ├── .env.example
@@ -820,7 +820,7 @@ Omar Santos is a Cisco Distinguished Engineer and co-lead of the DEF CON Red Tea
 
 ---
 
-## Claude Code Working Rules
+## Codex Working Rules
 
 When writing any code in this project:
 

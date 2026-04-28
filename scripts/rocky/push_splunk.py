@@ -38,7 +38,7 @@ def _load_env():
 
 _env = _load_env()
 
-SPLUNK_HEC_URL = _env.get("SPLUNK_HEC_URL", "https://localhost:8088")
+SPLUNK_HEC_URL = _env.get("SPLUNK_HEC_URL", "http://localhost:8086")
 SPLUNK_HEC_TOKEN = _env.get("SPLUNK_HEC_TOKEN", "")
 HEC_INDEX = "vuln_scans"
 HEC_SOURCETYPE = "hayyan:vuln:scanner"

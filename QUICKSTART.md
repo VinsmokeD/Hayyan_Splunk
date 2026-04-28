@@ -70,7 +70,7 @@ Type these in the web UI:
 
 ## Fastest Path to Success
 
-1. Verify Splunk is running: `curl -k https://192.168.56.1:8089/services/server/info`
+1. Verify Splunk is running: `curl -k https://192.168.56.1:8088/services/server/info`
 2. Get Gemini API key: https://aistudio.google.com (free)
 3. Add to .env: `GOOGLE_API_KEY=your_key`
 4. Run: `python -m uvicorn soc_agents.api.app:app --host 0.0.0.0 --port 8500 --reload`

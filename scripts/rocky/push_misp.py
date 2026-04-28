@@ -40,7 +40,7 @@ def _load_env():
 
 _env = _load_env()
 
-MISP_URL = _env.get("MISP_URL", "https://localhost:8443").rstrip("/")
+MISP_URL = _env.get("MISP_URL", "https://127.0.0.1:8443").rstrip("/")
 MISP_API_KEY = _env.get("MISP_API_KEY", "")
 
 _ssl_ctx = ssl.create_default_context()

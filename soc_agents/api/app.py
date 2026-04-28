@@ -173,7 +173,7 @@ async def vuln_posture(target: str = "", severity: str = "high"):
 
     spl = (
         f'index=vuln_scans {where_parts} '
-        f'| stats count as findings, values(cve_id) as cves, max(cvss_score) as max_cvss '
+        f'| stats count as findings, values(cveid) as cves, max(cvssscore) as max_cvss '
         f'  by target, severity '
         f'| sort -max_cvss'
     )

@@ -192,7 +192,14 @@ def process_nuclei_file(filepath: Path, scan_id: str, now_ts: float) -> list[dic
                 continue
             try:
                 raw = json.loads(line)
-                records.append(normalize_nuclei_finding(raw, scan_id, now_ts))
+                if isinstance(raw, dict):
+                    records.append(normalize_nuclei_finding(raw, scan_id, now_ts))
+                elif isinstance(raw, list):
+                    for item in raw:
+                        if isinstance(item, dict):
+                            records.append(normalize_nuclei_finding(item, scan_id, now_ts))
+                else:
+                    log.warning("Unexpected Nuclei JSON type at %s line %d: %s", filepath.name, line_num, type(raw).__name__)
             except json.JSONDecodeError as e:
                 log.warning("Nuclei parse error at %s line %d: %s", filepath.name, line_num, e)
     return records
@@ -208,7 +215,14 @@ def process_trivy_file(filepath: Path, scan_id: str, now_ts: float) -> list[dict
                 continue
             try:
                 raw = json.loads(line)
-                records.append(normalize_trivy_finding(raw, scan_id, now_ts))
+                if isinstance(raw, dict):
+                    records.append(normalize_trivy_finding(raw, scan_id, now_ts))
+                elif isinstance(raw, list):
+                    for item in raw:
+                        if isinstance(item, dict):
+                            records.append(normalize_trivy_finding(item, scan_id, now_ts))
+                else:
+                    log.warning("Unexpected Trivy JSON type at %s line %d: %s", filepath.name, line_num, type(raw).__name__)
             except json.JSONDecodeError as e:
                 log.warning("Trivy parse error at %s line %d: %s", filepath.name, line_num, e)
     return records

@@ -1,0 +1,2 @@
+ioc_value,ioc_type,threat_tags,tlp,confidence,misp_event_id,misp_event_uuid,misp_event_info,first_seen,last_seen,timestamp,category,to_ids,sync_time,sync_epoch
+203.0.113.77,ip-src,,tlp:amber,medium,1,7360cc96-6431-4bff-895d-e17f4da072d5,Copilot IOC sync smoke test 2026-04-26T19:58:01.246903Z,,,1777233481,Network activity,True,2026-04-28T07:03:32.904175Z,1777359812

@@ -1,50 +1,42 @@
 # MISP Threat Intelligence Platform — Hayyan SOC Lab
 # Deploy: docker compose -f docker-compose.misp.yml up -d
-# UI:     https://localhost:8443  (admin@admin.test / admin — change immediately)
-# API:    https://localhost:8443  (use Bearer token from UI → Administration → Auth Keys)
+# UI:     https://127.0.0.1:8443  (admin@admin.test / MispAdmin2026!)
+# API:    https://127.0.0.1:8443  (Administration → Auth Keys)
 #
-# Port selection avoids conflicts with existing lab services:
-#   8080 → Splunk Web UI (already in use)
-#   8088 → Splunk HEC   (already in use)
-#   8089 → Splunk REST  (already in use)
-#   8443 → MISP HTTPS  (new)
-#   8080 → MISP HTTP   (redirects to 8443)
-
-version: "3.8"
+# Fix: Switched from coolacid/misp-docker (broken supervisord env) to
+#      ghcr.io/misp/misp-docker (officially maintained, stable on Docker Desktop)
 
 services:
 
   misp:
-    image: coolacid/misp-docker:core-latest
+    image: ghcr.io/misp/misp-docker/misp-core:latest
     container_name: hayyan-misp
     restart: unless-stopped
     ports:
       - "8443:443"
       - "8081:80"
     environment:
-      # Base URL — used for internal links in MISP
-      - MISP_BASEURL=https://localhost:8443
+      - MISP_BASEURL=https://127.0.0.1:8443
       - MISP_ADMIN_EMAIL=admin@admin.test
-      # Change this password after first login via UI
-      - MISP_ADMIN_PASSPHRASE=Hayyan@2024!MISP
+      - MISP_ADMIN_PASSPHRASE=MispAdmin2026!
       - MISP_ORG=Hayyan-Horizons
-      - MISP_SALT=HayyanSOCLabSalt2024
-      # Disable SSL verification between containers (internal)
-      - MISP_DISABLE_SSL_REDIRECT=false
-      # DB connection
+      - MISP_SALT=HayyanSOCLabSalt2024x32chars!!
       - MYSQL_HOST=misp-db
       - MYSQL_PORT=3306
       - MYSQL_USER=misp
       - MYSQL_PASSWORD=misp_db_pass_2024
       - MYSQL_DATABASE=misp
-      # Redis
       - REDIS_FQDN=misp-redis
+      - CRON_USER_ID=1
+      - WORKERS=1
     volumes:
       - misp-data:/var/www/MISP/app/files
       - misp-logs:/var/www/MISP/app/tmp/logs
     depends_on:
-      - misp-db
-      - misp-redis
+      misp-db:
+        condition: service_healthy
+      misp-redis:
+        condition: service_started
     networks:
       - misp-net
 
@@ -63,6 +55,11 @@ services:
       --character-set-server=utf8mb4
       --collation-server=utf8mb4_unicode_ci
       --max_allowed_packet=500M
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-pmisp_root_pass_2024"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     networks:
       - misp-net
 
@@ -70,11 +67,13 @@ services:
     image: redis:7-alpine
     container_name: hayyan-misp-redis
     restart: unless-stopped
-    command: redis-server --save 60 1 --loglevel warning
+    command: redis-server --save 60 1 --loglevel warning --requirepass redispassword
     volumes:
       - misp-redis-data:/data
     networks:
-      - misp-net
+      misp-net:
+        aliases:
+          - redis
 
 volumes:
   misp-data:

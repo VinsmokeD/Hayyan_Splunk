@@ -30,10 +30,10 @@ Expected containers:
 
 ## Step 2: Initial Login & Password Change
 
-1. Open: **https://localhost:8443**
+1. Open: **https://127.0.0.1:8443**
 2. Accept the self-signed certificate warning
-3. Login: `admin@admin.test` / `Hayyan@2024!MISP`
-4. **IMMEDIATELY** change the password: My Profile → Change Password
+3. Login: `admin@admin.test` / `MispAdmin2026!`
+4. If login fails, reset via container CLI before troubleshooting anything else.
 
 ---
 
@@ -47,9 +47,12 @@ Expected containers:
 ```env
 # Add to your .env file:
 MISP_API_KEY=your_key_here
-MISP_URL=https://localhost:8443
+MISP_URL=https://127.0.0.1:8443
 MISP_VERIFY_SSL=false
+MISP_ALLOW_WRITE=false
 ```
+
+Keep `MISP_ALLOW_WRITE=false` during normal demos. The AI agent can draft MISP events with `create_misp_event`, but live event creation stays blocked until Mahmoud explicitly approves the exact write and flips this setting.
 
 ---
 
@@ -124,7 +127,7 @@ docker exec hayyan-splunk /opt/splunk/bin/splunk restart
 ```bash
 # Verify MISP API is working
 curl -sk -H "Authorization: $MISP_API_KEY" -H "Accept: application/json" \
-    https://localhost:8443/servers/getVersion
+    https://127.0.0.1:8443/servers/getVersion
 
 # Ask the AI agent about a known-bad IP
 # In the Streamlit UI:
@@ -141,7 +144,7 @@ curl -sk -H "Authorization: $MISP_API_KEY" -H "Accept: application/json" \
 | API returns 403 | API key wrong or expired — regenerate in UI |
 | Feeds show 0 events | Run Sync Actions → Fetch All Feeds manually in UI |
 | IOC lookup empty in Splunk | Re-run `scripts/misp_sync_splunk.py` and re-upload CSV |
-| misp_sync_splunk.py times out | MISP URL/port wrong in .env — check `MISP_URL=https://localhost:8443` |
+| misp_sync_splunk.py times out | MISP URL/port wrong in .env — check `MISP_URL=https://127.0.0.1:8443` |
 
 ---
 

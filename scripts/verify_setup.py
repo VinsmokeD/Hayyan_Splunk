@@ -88,7 +88,7 @@ def check_splunk_connectivity():
             print(f"[OK] Splunk reachable via {scheme}://{client._host}:{client._port}")
             return True
         else:
-            print("[ERROR] Splunk not responding — check port 8089 is exposed on Docker container")
+            print("[ERROR] Splunk not responding — check REST port 8088 is exposed on Docker container")
             return False
     except Exception as e:
         print(f"[ERROR] Splunk connection failed: {e}")

@@ -8,7 +8,7 @@ Complete end-to-end setup for the AI SOC agent system.
 - [ ] Splunk Enterprise running (Docker or on-prem)
 - [ ] Google Gemini API key (free tier: https://aistudio.google.com)
 - [ ] 4GB+ RAM available
-- [ ] Network access to Splunk REST API (port 8089)
+- [ ] Network access to Splunk REST API (host port 8088)
 
 ---
 
@@ -45,7 +45,7 @@ cp .env.example .env
 ```
 GOOGLE_API_KEY=<your-gemini-api-key>
 SPLUNK_HOST=192.168.56.1
-SPLUNK_PORT=8089
+SPLUNK_PORT=8088
 SPLUNK_USERNAME=admin
 SPLUNK_PASSWORD=Hayyan@2024!
 SPLUNK_SCHEME=https
@@ -55,7 +55,7 @@ MODEL_NAME=gemini-2.5-flash
 **Critical fields:**
 - `GOOGLE_API_KEY` — Get from https://aistudio.google.com (free tier available)
 - `SPLUNK_HOST` — Your Splunk server IP/hostname
-- `SPLUNK_PORT` — Default 8089 (management API)
+- `SPLUNK_PORT` — Default 8088 (host port mapped to Splunk management API)
 
 ---
 
@@ -174,9 +174,9 @@ print(result["report"])
 ### Issue: "Splunk unreachable"
 **Solution:**
 1. Verify Splunk is running: `docker ps | grep splunk`
-2. Check connectivity: `curl -k https://192.168.56.1:8089/services/server/info`
+2. Check connectivity: `curl -k https://192.168.56.1:8088/services/server/info`
 3. Verify credentials in .env
-4. Check firewall (port 8089)
+4. Check firewall (port 8088)
 
 ### Issue: "GOOGLE_API_KEY invalid"
 **Solution:**

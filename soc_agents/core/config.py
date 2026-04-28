@@ -1,4 +1,5 @@
 from pathlib import Path
+from pydantic import ConfigDict
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 
@@ -8,6 +9,13 @@ _ENV_FILE = Path(__file__).resolve().parent.parent.parent / ".env"
 
 
 class Settings(BaseSettings):
+    model_config = ConfigDict(
+        env_file=str(_ENV_FILE),
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
     # ── LLM Providers (fallback chain: OpenRouter → Groq → Ollama → Gemini) ────
     # OpenRouter — https://openrouter.ai  ($10 top-up → 1000 free req/day)
     openrouter_api_key: str = ""
@@ -28,23 +36,25 @@ class Settings(BaseSettings):
 
     # ── Splunk REST API ────────────────────────────────────────────────────────
     splunk_host: str = "localhost"
-    splunk_port: int = 8088  # Docker: host:8088 → container:8089 (REST API)
+    splunk_port: int = 8088  # Docker: host:8088 -> container:8089 (REST API)
     splunk_username: str = "admin"
-    splunk_password: str = "Hayyan@2024!"
+    splunk_password: str = ""
     splunk_scheme: str = "https"
     splunk_verify_ssl: bool = False
 
     # ── Splunk HEC (HTTP Event Collector) ─────────────────────────────────────
     # Create token: Splunk UI → Settings → Data Inputs → HTTP Event Collector
     splunk_hec_token: str = ""
-    splunk_hec_url: str = "https://localhost:8088"
+    splunk_hec_url: str = "http://localhost:8086"
 
     # ── MISP Threat Intelligence Platform ─────────────────────────────────────
     # Deploy: docker compose -f docker-compose.misp.yml up -d
     # Get API key: MISP UI → Administration → Auth Keys → Add Authentication Key
-    misp_url: str = "https://localhost:8443"
+    misp_url: str = "https://127.0.0.1:8443"
     misp_api_key: str = ""
     misp_verify_ssl: bool = False
+    # Keep live MISP writes disabled unless Mahmoud explicitly enables them.
+    misp_allow_write: bool = False
     # Min CVSS score to create MISP events from scanner findings
     misp_vuln_min_cvss: float = 7.0
 
@@ -59,10 +69,12 @@ class Settings(BaseSettings):
     chroma_persist_dir: str = "./data/chroma_db"
     checkpoint_db: str = "./data/checkpoints.sqlite"
 
-    class Config:
-        env_file = str(_ENV_FILE)
-        env_file_encoding = "utf-8"
-        case_sensitive = False
+    # â”€â”€ Rocky Scanner Deployment â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    rocky_ip: str = "192.168.56.20"
+    rocky_host: str = "192.168.56.20"
+    rocky_user: str = ""
+    rocky_password: str = ""
+    rocky_scan_dir: str = "/opt/hayyan-scan"
 
 
 @lru_cache()

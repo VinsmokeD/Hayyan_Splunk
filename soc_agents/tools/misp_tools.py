@@ -180,8 +180,8 @@ def get_vuln_posture(target: Optional[str] = None, min_severity: str = "medium")
         spl = (
             f'index=vuln_scans {where_clause} '
             f'| stats count as finding_count, '
-            f'  values(cve_id) as cves, '
-            f'  max(cvss_score) as max_cvss, '
+            f'  values(cveid) as cves, '
+            f'  max(cvssscore) as max_cvss, '
             f'  values(remediation) as remediations '
             f'  by target, severity, service '
             f'| sort -max_cvss'
@@ -300,6 +300,24 @@ def create_misp_event(
                 "created": False,
                 "error": f"Invalid IoC JSON: {e}. Format: [{{'type':'ip-dst','value':'1.2.3.4'}}]",
             })
+
+        if not cfg.misp_allow_write:
+            return json.dumps({
+                "created": False,
+                "requires_approval": True,
+                "approval_control": "Set MISP_ALLOW_WRITE=true only after Mahmoud approves this exact event.",
+                "draft_event": {
+                    "title": title,
+                    "description": description,
+                    "iocs": ioc_list,
+                    "tlp": tlp,
+                    "tags": ["origin:hayyan-internal", "source:ai-soc-agent"],
+                },
+                "message": (
+                    "MISP live write blocked by policy. This is the drafted event for "
+                    "human approval; no data was written to MISP."
+                ),
+            }, indent=2)
 
         tlp_tag_map = {
             "white": "tlp:white",

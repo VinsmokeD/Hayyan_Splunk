@@ -13,22 +13,32 @@ SCAN_ID="${2:?SCAN_ID required}"
 CONFIG_DIR="/opt/hayyan-scan/config"
 TARGETS_FILE="$CONFIG_DIR/targets.yaml"
 OUTPUT_FILE="$RAW_DIR/nuclei-${SCAN_ID}.json"
+TARGET_LIST_FILE="$RAW_DIR/nuclei-targets-${SCAN_ID}.txt"
 
 if [[ ! -f "$TARGETS_FILE" ]]; then
     echo "[Nuclei] ERROR: targets file not found at $TARGETS_FILE"
     exit 1
 fi
 
-# Read web targets from YAML (simple grep for nuclei_targets list items)
-TARGETS=$(grep -A 100 '^nuclei_targets:' "$TARGETS_FILE" | grep '^\s*-' | sed 's/.*- //' | tr '\n' ',')
-TARGETS="${TARGETS%,}"  # Remove trailing comma
+# Extract only nuclei_targets list items, stripping inline comments safely.
+awk '
+    /^nuclei_targets:/ { in_targets=1; next }
+    in_targets && /^[^[:space:]-]/ { in_targets=0 }
+    in_targets && /^[[:space:]]*-/ {
+        line=$0
+        sub(/^[[:space:]]*-[[:space:]]*/, "", line)
+        sub(/[[:space:]]+#.*/, "", line)
+        if (line != "") print line
+    }
+' "$TARGETS_FILE" > "$TARGET_LIST_FILE"
 
-if [[ -z "$TARGETS" ]]; then
+if [[ ! -s "$TARGET_LIST_FILE" ]]; then
     echo "[Nuclei] WARN: No nuclei_targets found in $TARGETS_FILE"
     exit 0
 fi
 
-echo "[Nuclei] Targets: $TARGETS"
+TARGET_COUNT=$(wc -l < "$TARGET_LIST_FILE" | tr -d ' ')
+echo "[Nuclei] Target file: $TARGET_LIST_FILE ($TARGET_COUNT targets)"
 echo "[Nuclei] Output:  $OUTPUT_FILE"
 echo "[Nuclei] Severity: medium,high,critical"
 
@@ -40,7 +50,7 @@ echo "[Nuclei] Severity: medium,high,critical"
 #   -rate-limit 50: be kind to the lab network
 #   -silent: suppress banner
 nuclei \
-    -target "$TARGETS" \
+    -list "$TARGET_LIST_FILE" \
     -severity medium,high,critical \
     -json-export "$OUTPUT_FILE" \
     -stats \

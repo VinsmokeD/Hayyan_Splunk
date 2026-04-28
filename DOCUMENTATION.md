@@ -106,7 +106,7 @@ Hayyan SOC is an **AI-powered Tier-1 security analyst** designed for Hayyan Hori
                        ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ Splunk Enterprise (Docker on host)                          │
-│ Port 8089 (REST API)                                        │
+│ Port 8088 host -> 8089 container (REST API)                 │
 │ ┌──────────────────────────────────────────────────────────┐│
 │ │ Indexes:                                                 ││
 │ │ • windows_events (DC01 AD logs, Kerberos, etc)           ││
@@ -159,7 +159,8 @@ Your physical infrastructure:
 | **Network** | VMnet2 host-only: `192.168.56.0/24` |
 | **Splunk** | Docker on Windows host |
 | **Splunk UI** | `http://localhost:8080` |
-| **Splunk REST API** | `https://localhost:8089` |
+| **Splunk REST API** | `https://localhost:8088` |
+| **Splunk HEC** | `http://localhost:8086/services/collector/event` |
 | **Agent API** | `http://localhost:8500` |
 
 ### Virtual Machines
@@ -267,7 +268,7 @@ Domain: hayyan.local
 ### Prerequisites
 
 - **Python 3.10+** (tested on 3.11, 3.12, 3.14)
-- **Splunk Enterprise** running and accessible on port 8089
+- **Splunk Enterprise** running and accessible on host REST port 8088
 - **API Key:**
   - Either **Groq API Key** (free: llama-3.3-70b, 14,400 req/day) — recommended
   - Or **Google Gemini API Key** (fallback)
@@ -332,7 +333,7 @@ MODEL_NAME=gemini-2.5-flash
 
 # Splunk Configuration
 SPLUNK_HOST=localhost          # or 192.168.56.1 for Docker
-SPLUNK_PORT=8089               # REST API port
+SPLUNK_PORT=8088               # REST API host port (maps to container 8089)
 SPLUNK_USERNAME=admin
 SPLUNK_PASSWORD=Hayyan@2024!
 SPLUNK_SCHEME=https
@@ -363,7 +364,7 @@ Splunk OK
 
 If you get `Splunk unreachable`, check:
 1. Is Splunk running? (`docker ps | grep splunk`)
-2. Is port 8089 exposed? (`docker inspect splunk | grep -i 8089`)
+2. Is host port 8088 mapped to container 8089? (`docker port splunk`)
 3. Is `.env` pointing to the right host?
 
 ---
@@ -492,7 +493,7 @@ curl http://localhost:8500/api/health | jq
 ```json
 {
   "status": "ok",
-  "splunk": "connected via https://localhost:8089",
+  "splunk": "connected via https://localhost:8088",
   "model": "llama-3.3-70b-versatile"
 }
 ```
@@ -501,7 +502,7 @@ curl http://localhost:8500/api/health | jq
 ```json
 {
   "status": "error",
-  "splunk": "unreachable at localhost:8089"
+  "splunk": "unreachable at localhost:8088"
 }
 ```
 
@@ -1376,7 +1377,7 @@ docker run -d \
   -p 8500:8500 \
   -e GROQ_API_KEY=$GROQ_API_KEY \
   -e SPLUNK_HOST=192.168.56.1 \
-  -e SPLUNK_PORT=8089 \
+  -e SPLUNK_PORT=8088 \
   hayyan-soc:latest
 ```
 
@@ -1389,9 +1390,9 @@ docker logs -f hayyan-soc
 
 ## Troubleshooting
 
-### Issue: `Splunk unreachable at localhost:8089`
+### Issue: `Splunk unreachable at localhost:8088`
 
-**Cause:** Splunk is not running or port 8089 is not exposed.
+**Cause:** Splunk is not running or REST API port 8088 is not exposed.
 
 **Fix:**
 1. Check if Splunk container is running:
@@ -1402,21 +1403,21 @@ docker logs -f hayyan-soc
 2. If not running, start it:
    ```bash
    docker run -d --name splunk \
-     -p 8080:8000 -p 8088:8088 -p 8089:8089 \
+     -p 8080:8000 -p 8088:8089 -p 8086:8088 \
      -e SPLUNK_PASSWORD=Hayyan@2024! \
      splunk/splunk:latest start
    ```
 
 3. If running, verify port exposure:
    ```bash
-   docker port splunk | grep 8089
-   # Should output: 8089/tcp -> 0.0.0.0:8089
+  docker port splunk | grep 8088
+  # Should output: 8089/tcp -> 0.0.0.0:8088
    ```
 
 4. Update `.env` to use the correct host:
    ```bash
    SPLUNK_HOST=192.168.56.1  # or localhost if on same machine
-   SPLUNK_PORT=8089
+  SPLUNK_PORT=8088
    ```
 
 ---
