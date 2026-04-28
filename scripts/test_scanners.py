@@ -40,6 +40,8 @@ ROCKY_HOST = rocky_host()
 ROCKY_USER = rocky_user()
 ROCKY_PASSWORD = rocky_password()
 ROCKY_SCAN_DIR = rocky_scan_dir()
+ROCKY_TEST_SCAN_ARGS = ENV.get("ROCKY_TEST_SCAN_ARGS", "--trivy")
+ROCKY_TEST_SCAN_PROFILE = ENV.get("ROCKY_TEST_SCAN_PROFILE", "demo")
 
 
 def require_config() -> None:
@@ -84,7 +86,9 @@ def test_scanners() -> int:
 
         scan_dir_q = shlex.quote(ROCKY_SCAN_DIR)
         failures = 0
-        failures += int(run_remote(ssh, f"cd {scan_dir_q} && bash orchestrator.sh") != 0)
+        scan_args = " ".join(shlex.quote(part) for part in shlex.split(ROCKY_TEST_SCAN_ARGS))
+        scan_profile_q = shlex.quote(ROCKY_TEST_SCAN_PROFILE)
+        failures += int(run_remote(ssh, f"cd {scan_dir_q} && HAYYAN_SCAN_PROFILE={scan_profile_q} bash orchestrator.sh {scan_args}") != 0)
         failures += int(run_remote(ssh, f"find {scan_dir_q}/logs -maxdepth 1 -type f -printf '%TY-%Tm-%Td %TH:%TM %p\\n' | sort | tail -20") != 0)
         failures += int(run_remote(ssh, "systemctl list-timers --all | grep hayyan-scan", sudo=False) != 0)
 

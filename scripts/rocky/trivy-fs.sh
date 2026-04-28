@@ -1,26 +1,21 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Hayyan SOC Lab — Trivy Filesystem/Container Scanner Wrapper
+# Hayyan SOC Lab - Trivy Filesystem/Container Scanner Wrapper
 # /opt/hayyan-scan/scanners/trivy-fs.sh
 #
 # Args: $1=RAW_DIR $2=SCAN_ID
-# Scans: local filesystem + running Docker containers
-# Output: $RAW_DIR/trivy-<SCAN_ID>.json
+# Output: $RAW_DIR/trivy-<SCAN_ID>.json as flattened JSONL records
 # =============================================================================
 set -euo pipefail
 
 RAW_DIR="${1:?RAW_DIR required}"
 SCAN_ID="${2:?SCAN_ID required}"
-CONFIG_DIR="/opt/hayyan-scan/config"
-TARGETS_FILE="$CONFIG_DIR/targets.yaml"
 OUTPUT_FILE="$RAW_DIR/trivy-${SCAN_ID}.json"
 
-# ── Aggregate all Trivy findings into one JSONL file ─────────────────────────
-> "$OUTPUT_FILE"  # create/empty
+> "$OUTPUT_FILE"
 
-# Helper: run trivy and append JSON results
 run_trivy_target() {
-    local target_type="$1"  # "fs", "image", "rootfs"
+    local target_type="$1"
     local target_value="$2"
     local label="$3"
 
@@ -30,20 +25,20 @@ run_trivy_target() {
     echo "[Trivy] Scanning $target_type: $target_value ..."
     trivy "$target_type" \
         --format json \
-        --severity MEDIUM,HIGH,CRITICAL \
+        --severity LOW,MEDIUM,HIGH,CRITICAL \
         --output "$tmp_out" \
         --quiet \
         --skip-dirs /proc,/sys,/dev \
         "$target_value" 2>/dev/null || true
 
-    # Extract Results array and flatten to one JSON object per vulnerability
-    python3 - "$tmp_out" "$target_value" "$label" <<'PYEOF'
-import json, sys
+    python3 - "$tmp_out" "$target_value" "$label" >> "$OUTPUT_FILE" <<'PYEOF'
+import json
+import sys
 
 tmp_out, target_value, label = sys.argv[1], sys.argv[2], sys.argv[3]
 try:
-    with open(tmp_out) as f:
-        data = json.load(f)
+    with open(tmp_out, encoding="utf-8") as handle:
+        data = json.load(handle)
 except Exception:
     sys.exit(0)
 
@@ -70,15 +65,19 @@ for result in data.get("Results", []):
             "status": vuln.get("Status", ""),
         }))
 PYEOF
-    cat "$tmp_out" >> "$OUTPUT_FILE" 2>/dev/null || true
     rm -f "$tmp_out"
 }
 
-# ── Scan local filesystem ─────────────────────────────────────────────────────
-run_trivy_target "fs" "/" "rocky-filesystem"
+if [[ "${HAYYAN_SCAN_PROFILE:-full}" == "demo" ]]; then
+    run_trivy_target "fs" "/opt/hayyan-scan/demo-fixtures/vulnerable-python" "demo-vulnerable-python"
+else
+    run_trivy_target "fs" "/" "rocky-filesystem"
+    if [[ -d "/opt/hayyan-scan/demo-fixtures/vulnerable-python" ]]; then
+        run_trivy_target "fs" "/opt/hayyan-scan/demo-fixtures/vulnerable-python" "demo-vulnerable-python"
+    fi
+fi
 
-# ── Scan running Docker containers (if Docker is available) ──────────────────
-if command -v docker &>/dev/null && docker info &>/dev/null 2>&1; then
+if [[ "${HAYYAN_SCAN_PROFILE:-full}" != "demo" ]] && command -v docker &>/dev/null && docker info &>/dev/null 2>&1; then
     while IFS= read -r container_id; do
         container_name=$(docker inspect --format='{{.Name}}' "$container_id" | tr -d '/')
         container_image=$(docker inspect --format='{{.Config.Image}}' "$container_id")
@@ -86,7 +85,7 @@ if command -v docker &>/dev/null && docker info &>/dev/null 2>&1; then
         run_trivy_target "image" "$container_image" "container:$container_name"
     done < <(docker ps -q)
 else
-    echo "[Trivy] Docker not available — skipping container scans"
+    echo "[Trivy] Docker not available or demo profile active - skipping container scans"
 fi
 
 FINDING_COUNT=$(wc -l < "$OUTPUT_FILE" 2>/dev/null || echo 0)

@@ -1,156 +1,109 @@
-# MISP Setup Guide — Hayyan SOC Lab
+# MISP Setup Guide - Hayyan SOC Lab
 
 ## Overview
-MISP (Malware Information Sharing Platform) is the threat intelligence backbone of the Hayyan SOC.
-It holds known-bad IOCs (IPs, domains, hashes), supports external feed ingestion, and is queried
-by the AI SOC agent and Splunk during investigations.
 
----
+MISP is the threat intelligence backbone of the Hayyan SOC. It stores known-bad IOCs, supports feed ingestion, and supplies context to Splunk searches and the AI SOC agent.
 
-## Step 1: Start MISP
+## Start MISP
 
 ```powershell
-# On the host machine (Windows, in the Hayyan_Splunk directory)
 docker compose -f docker-compose.misp.yml up -d
-
-# Verify all three containers are running
-docker ps | Select-String "hayyan-misp"
 ```
 
-Expected containers:
-- `hayyan-misp` (main MISP application)
-- `hayyan-misp-db` (MySQL 8.0)
-- `hayyan-misp-redis` (Redis 7)
+Open:
 
-> [!NOTE]
-> First startup takes **3-5 minutes** as MISP initializes the database and generates keys.
-> Monitor with: `docker logs -f hayyan-misp`
+```text
+https://127.0.0.1:8443
+```
 
----
+First startup can take several minutes while MISP initializes its database.
 
-## Step 2: Initial Login & Password Change
+## API Key
 
-1. Open: **https://127.0.0.1:8443**
-2. Accept the self-signed certificate warning
-3. Login: `admin@admin.test` / `MispAdmin2026!`
-4. If login fails, reset via container CLI before troubleshooting anything else.
-
----
-
-## Step 3: Get Your API Key
-
-1. Administration → Auth Keys → Add Authentication Key
-2. Set description: `splunk-integration`
-3. Set permissions: Read Only (for Splunk sync user)
-4. Copy the API key — you only see it once!
+Create a dedicated integration key in MISP and set:
 
 ```env
-# Add to your .env file:
-MISP_API_KEY=your_key_here
 MISP_URL=https://127.0.0.1:8443
+MISP_API_KEY=your_misp_api_key_here
 MISP_VERIFY_SSL=false
 MISP_ALLOW_WRITE=false
 ```
 
-Keep `MISP_ALLOW_WRITE=false` during normal demos. The AI agent can draft MISP events with `create_misp_event`, but live event creation stays blocked until Mahmoud explicitly approves the exact write and flips this setting.
+Keep `MISP_ALLOW_WRITE=false` for normal demos. The AI agent and scanner pipeline may draft or prepare MISP context, but live MISP event creation requires explicit approval.
 
----
-
-## Step 4: Bootstrap Feeds
+## Feed Bootstrap
 
 ```bash
-# Run the automated feed bootstrapper
 bash scripts/misp_setup.sh
 ```
 
-This script:
-- Waits for MISP to be healthy
-- Enables CIRCL, URLhaus, Feodo Tracker, MalwareBazaar feeds
-- Triggers initial feed pull (runs in background, ~1-5 min)
+Recommended initial feeds:
 
-**Manual verification in MISP UI:**
-- Sync Actions → List Feeds → verify feeds show "Enabled"
-- Sync Actions → Fetch All Feeds → wait and check event count
+- CIRCL default feed
+- Abuse.ch URLhaus
+- Abuse.ch Feodo Tracker
+- MalwareBazaar
+- OTX public pulse feed
 
----
+## Sync IOCs to Splunk
 
-## Step 5: Sync IOCs to Splunk
-
-```bash
-# Export IOC lookup CSV (run on Windows host)
-.venv\Scripts\python.exe scripts\misp_sync_splunk.py
-
-# Dry run first to see what will be exported:
-.venv\Scripts\python.exe scripts\misp_sync_splunk.py --dry-run
-```
-
-Output: `data/misp_ioc_lookup.csv` — this file is used by Splunk saved searches.
-
-**Apply the Splunk lookup:**
-1. Splunk UI → Settings → Lookups → Lookup table files → Upload
-2. Upload `data/misp_ioc_lookup.csv` with name `misp_ioc_lookup`
-3. Settings → Lookups → Lookup definitions → New → Name: `misp_ioc_lookup`
-
----
-
-## Step 6: Apply Splunk Indexes
+Dry run:
 
 ```powershell
-# Apply indexes inside Splunk container
-Get-Content splunk_config\indexes.conf | docker exec -i hayyan-splunk bash -c "cat >> /opt/splunk/etc/system/local/indexes.conf"
-docker exec hayyan-splunk /opt/splunk/bin/splunk restart
+python scripts/misp_sync_splunk.py --dry-run
 ```
 
----
-
-## Step 7: Apply Threat Dashboard
-
-1. Splunk UI → Dashboards → Create New Dashboard
-2. Click "Source" (XML editor)
-3. Paste content from `splunk_config/threat_dashboard.xml`
-4. Save as: "Hayyan SOC — Threat-Informed Defense"
-
----
-
-## Step 8: Apply Risk-Adjusted Alerts
+Full sync:
 
 ```powershell
-# Apply saved searches (detection rules)
-Get-Content splunk_config\risk_adjusted_alerts.conf | docker exec -i hayyan-splunk bash -c "cat >> /opt/splunk/etc/system/local/savedsearches.conf"
-docker exec hayyan-splunk /opt/splunk/bin/splunk restart
+python scripts/misp_sync_splunk.py
 ```
 
----
+Validated on April 28, 2026:
 
-## Step 9: Test the Integration
+- MISP returned 5,000 attributes.
+- Deduplication produced 4,995 unique IOCs.
+- `data/misp_ioc_lookup.csv` was written locally.
+- Splunk lookup refresh succeeded through chunked `outputlookup` fallback.
 
-```bash
-# Verify MISP API is working
-curl -sk -H "Authorization: $MISP_API_KEY" -H "Accept: application/json" \
-    https://127.0.0.1:8443/servers/getVersion
+Verify in Splunk:
 
-# Ask the AI agent about a known-bad IP
-# In the Streamlit UI:
-"Look up 185.220.101.45 in MISP threat intel"
+```spl
+| inputlookup misp_ioc_lookup.csv | stats count by ioc_type | sort -count
 ```
 
----
+## Why Lookup-Based Sync
+
+The `misp_ioc_lookup.csv` approach keeps detections fast and easy to explain. Saved searches can use `inputlookup` instead of repeatedly scanning a large IOC index. This fits the laptop-sized lab while still looking like a real SOC enrichment pattern.
+
+## Splunk Integration Checks
+
+```spl
+| inputlookup misp_ioc_lookup.csv | head 5
+```
+
+```spl
+index=linux_web
+[ | inputlookup misp_ioc_lookup.csv
+  | where ioc_type="ip-src" OR ioc_type="ip-dst"
+  | rename ioc_value as clientip
+  | fields clientip ]
+| stats count by clientip
+```
 
 ## Troubleshooting
 
 | Problem | Fix |
 |---|---|
-| MISP UI not reachable | `docker logs hayyan-misp` — check for DB connection errors |
-| API returns 403 | API key wrong or expired — regenerate in UI |
-| Feeds show 0 events | Run Sync Actions → Fetch All Feeds manually in UI |
-| IOC lookup empty in Splunk | Re-run `scripts/misp_sync_splunk.py` and re-upload CSV |
-| misp_sync_splunk.py times out | MISP URL/port wrong in .env — check `MISP_URL=https://127.0.0.1:8443` |
-
----
+| MISP UI not reachable | Check `docker compose -f docker-compose.misp.yml ps` and container logs. |
+| API returns 403 | Regenerate the MISP auth key and update `.env`. |
+| Dry run returns 0 IOCs | Confirm feeds have been fetched and attributes are published with `to_ids=true`. |
+| Splunk REST lookup upload fails | Expected in this lab; the script falls back to chunked `outputlookup`. |
+| Lookup still empty | Re-run `python scripts/misp_sync_splunk.py` and check for chunk progress messages. |
 
 ## Architecture Notes
 
-- MISP is accessible only on the host machine (Docker port `8443:443`)
-- The AI agent queries MISP directly via Python `requests` (bypasses Splunk)
-- Splunk uses the exported CSV lookup for fast join operations in saved searches
-- Critical scan findings are automatically mirrored to MISP via `push_misp.py`
+- MISP runs on the host at `https://127.0.0.1:8443`.
+- Splunk uses the exported CSV lookup for correlation and retrospective hunts.
+- Rocky scanner-side MISP writes are disabled unless `MISP_ALLOW_WRITE=true`.
+- The AI chat workflow should only be tested with external providers after explicit approval to send lab context.

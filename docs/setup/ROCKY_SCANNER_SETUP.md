@@ -1,204 +1,122 @@
-# Rocky Linux Scanner Setup Guide — Hayyan SOC Lab
+# Rocky Linux Scanner Setup Guide - Hayyan SOC Lab
 
 ## Overview
-Rocky Linux (`192.168.56.20`) is the **authorized scanner node** for the Hayyan SOC.
-It runs Nuclei (web/network) and Trivy (filesystem/container) on a systemd timer,
-normalizes findings, and pushes them to Splunk via HEC.
 
-**Any scan from a source other than `192.168.56.20` should be treated as a rogue scan.**
+Rocky Linux (`192.168.56.20`) is the authorized scanner node for the Hayyan SOC. It runs Nuclei and Trivy, normalizes scanner output, and pushes findings into Splunk HEC index `vuln_scans`.
 
----
+Any scan from a source other than `192.168.56.20` should be treated as rogue or unscheduled activity unless explicitly approved.
 
-## Step 1: SSH to Rocky Linux
+## Host-Side Deployment
 
-```bash
-ssh your_user@192.168.56.20
-sudo -i
-```
-
----
-
-## Step 2: Install Nuclei
-
-```bash
-# Install Go (required for Nuclei)
-dnf install -y golang
-
-# Install Nuclei
-go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
-cp ~/go/bin/nuclei /usr/local/bin/
-
-# Update templates
-nuclei -update-templates
-
-# Verify
-nuclei -version
-```
-
----
-
-## Step 3: Install Trivy
-
-```bash
-# Add Trivy repository
-cat > /etc/yum.repos.d/trivy.repo << 'EOF'
-[trivy]
-name=Trivy repository
-baseurl=https://aquasecurity.github.io/trivy-repo/rpm/releases/$basearch/
-gpgcheck=1
-enabled=1
-gpgkey=https://aquasecurity.github.io/trivy-repo/rpm/public.key
-EOF
-
-dnf install -y trivy
-
-# Verify
-trivy --version
-```
-
----
-
-## Step 4: Deploy the Scanner Pack
-
-```bash
-# Create directory structure
-mkdir -p /opt/hayyan-scan/{config,scanners,pipeline,logs,systemd}
-
-# Copy all files from this repo's scripts/rocky/ to Rocky
-# From Windows host (using scp or copy-paste):
-```
+From the Windows project root:
 
 ```powershell
-# From Windows — copy scanner scripts to Rocky
-scp scripts/rocky/* your_user@192.168.56.20:/tmp/hayyan-scan-scripts/
-ssh your_user@192.168.56.20 "sudo cp -r /tmp/hayyan-scan-scripts/* /opt/hayyan-scan/"
+python scripts/deploy_rocky.py
 ```
+
+The deploy script:
+
+- Connects to Rocky over SSH using `ROCKY_HOST`, `ROCKY_USER`, and `ROCKY_PASSWORD`.
+- Verifies or installs Nuclei and Trivy.
+- Copies scanner scripts into `/opt/hayyan-scan`.
+- Writes `/opt/hayyan-scan/config/splunkhec.env` with only the scanner-side values needed for HEC and MISP.
+- Installs systemd units and enables `hayyan-scan.timer`.
+
+Required `.env` values:
 
 ```bash
-# On Rocky — set permissions
-chmod +x /opt/hayyan-scan/orchestrator.sh
-chmod +x /opt/hayyan-scan/scanners/nuclei-web.sh
-chmod +x /opt/hayyan-scan/scanners/trivy-fs.sh
-chmod 600 /opt/hayyan-scan/config/splunkhec.env
+ROCKY_HOST=192.168.56.20
+ROCKY_USER=mahmoud
+ROCKY_PASSWORD=your_rocky_ssh_password_here
+ROCKY_SCAN_DIR=/opt/hayyan-scan
+SPLUNK_HEC_URL=http://localhost:8086
+SPLUNK_HEC_TOKEN=your_hec_token_here
+MISP_URL=https://127.0.0.1:8443
+MISP_API_KEY=your_misp_api_key_here
+MISP_ALLOW_WRITE=false
 ```
 
----
+When deployed to Rocky, host-local URLs are translated to VMnet2-reachable URLs such as `http://192.168.56.1:8086` and `https://192.168.56.1:8443`.
 
-## Step 5: Configure Splunk HEC Token
+## Fast Validation Scan
 
-On the Windows host:
-1. Splunk UI → Settings → Data Inputs → HTTP Event Collector → New Token
-2. Name: `hayyan-scanner`
-3. Index: `vuln_scans` (select only this index)
-4. Copy the token
+Run:
 
-On Rocky Linux:
-```bash
-cat > /opt/hayyan-scan/config/splunkhec.env << 'EOF'
-# Splunk HEC Configuration — DO NOT COMMIT THIS FILE
-SPLUNK_HEC_URL=http://192.168.56.1:8086
-SPLUNK_HEC_TOKEN=YOUR_TOKEN_HERE
-MISP_URL=https://192.168.56.1:8443
-MISP_API_KEY=YOUR_MISP_KEY_HERE
-ROCKY_IP=192.168.56.20
-EOF
-
-chmod 600 /opt/hayyan-scan/config/splunkhec.env
+```powershell
+python scripts/test_scanners.py
 ```
 
----
-
-## Step 6: Configure Targets
-
-Edit `/opt/hayyan-scan/config/targets.yaml` and verify the target IPs match your lab topology.
-
-Key targets:
-- `http://192.168.56.10` — DC01 (Windows Server)
-- `http://192.168.56.20` — Rocky Linux self-scan
-- `https://192.168.56.1:8443` — MISP (self-scan for operational maturity)
-
----
-
-## Step 7: Install systemd Units
+By default this uses:
 
 ```bash
-# Copy systemd unit files
-cp /opt/hayyan-scan/systemd/hayyan-scan.service /etc/systemd/system/
-cp /opt/hayyan-scan/systemd/hayyan-scan.timer   /etc/systemd/system/
-
-# Important: move scripts to expected paths
-mkdir -p /opt/hayyan-scan/scanners /opt/hayyan-scan/pipeline
-cp /opt/hayyan-scan/nuclei-web.sh /opt/hayyan-scan/scanners/
-cp /opt/hayyan-scan/trivy-fs.sh   /opt/hayyan-scan/scanners/
-cp /opt/hayyan-scan/normalize.py  /opt/hayyan-scan/pipeline/
-cp /opt/hayyan-scan/push_splunk.py /opt/hayyan-scan/pipeline/
-cp /opt/hayyan-scan/push_misp.py  /opt/hayyan-scan/pipeline/
-cp /opt/hayyan-scan/orchestrator.sh /opt/hayyan-scan/
-
-# Enable and start the timer
-systemctl daemon-reload
-systemctl enable hayyan-scan.timer
-systemctl start hayyan-scan.timer
-
-# Verify
-systemctl status hayyan-scan.timer
-systemctl list-timers | grep hayyan
+ROCKY_TEST_SCAN_ARGS=--trivy
+ROCKY_TEST_SCAN_PROFILE=demo
 ```
 
----
+The demo profile scans `/opt/hayyan-scan/demo-fixtures/vulnerable-python`, a controlled vulnerable dependency manifest. Trivy produces real CVE findings without weakening the Rocky host or requiring a long Nuclei run.
 
-## Step 8: Run First Manual Scan
+Latest validated run:
+
+- Scan ID: `run-20260428-171022`
+- Findings: 46 Trivy findings
+- Severity: 6 critical, 20 high, 20 medium
+- HEC delivery: 46 sent, 0 failed
+- MISP mirroring: skipped because `MISP_ALLOW_WRITE=false`
+
+## Full Scheduled Scan
+
+The systemd timer remains the operational path:
 
 ```bash
-# Test run (does NOT wait for timer)
-sudo /opt/hayyan-scan/orchestrator.sh
-
-# Watch the log in real-time
-tail -f /opt/hayyan-scan/logs/scan-*.log
+systemctl list-timers --all | grep hayyan-scan
+sudo systemctl start hayyan-scan.service
 ```
 
-Expected output:
-```
->>> [Nuclei] Starting web/network scan...
->>> [Trivy] Starting filesystem/container scan...
->>> [Pipeline] Normalizing findings to unified schema...
->>> [Pipeline] 47 findings normalized.
->>> [Pipeline] Pushing to Splunk HEC (index=vuln_scans)...
-```
+Full scans run `/opt/hayyan-scan/orchestrator.sh`, which can execute both Nuclei and Trivy. Full Nuclei scans can be slow in a small lab, so use the fast validation path for demos.
 
----
-
-## Step 9: Verify in Splunk
+## Splunk Verification
 
 ```spl
-index=vuln_scans | stats count by scanner, severity | sort -count
+index=vuln_scans scanid="run-20260428-171022"
+| stats count by scanner, severity, target
+| sort -count
 ```
 
 ```spl
-index=vuln_scans | head 5 | table scanid, scanner, cveid, severity, cvssscore, target, service
+index=vuln_scans scanid="run-20260428-171022"
+| head 5
+| table scanid scanner cveid severity cvssscore target service remediation
 ```
 
----
+Expected normalized fields:
 
-## Step 10: Test Rogue Scan Simulation
+- `scanid`
+- `scanner`
+- `cveid`
+- `cvssscore`
+- `severity`
+- `target`
+- `service`
+- `remediation`
+- `referenceurl`
+
+## Rogue Scan Simulation
+
+Run the rogue scan from a host that is not Rocky:
 
 ```bash
-# Run from a DIFFERENT host (not Rocky Linux) to simulate unauthorized scanning
 bash scripts/rocky/rogue_scan_sim.sh --target 192.168.56.20 --intensity medium
-
-# Then check Splunk for the alert:
-# "RISK-ADJUSTED - Scanner Detected from Non-Authorized Host"
 ```
 
----
+Then check Splunk for the rogue scanner detection. The SOC story is that scheduled scans from Rocky are authorized, while similar behavior from another source is suspicious.
 
 ## Troubleshooting
 
 | Problem | Fix |
 |---|---|
-| Nuclei not found | Ensure `/usr/local/bin/nuclei` exists and is executable |
-| Trivy fails on /proc | Expected — Trivy skips /proc,/sys,/dev automatically |
-| HEC push fails (401) | Check SPLUNK_HEC_TOKEN in splunkhec.env |
-| HEC push fails (403) | HEC token not allowed for vuln_scans index — check Splunk settings |
-| No findings in vuln_scans | Check scan log: `/opt/hayyan-scan/logs/scan-*.log` |
-| Timer not firing | `systemctl list-timers | grep hayyan` — check NextElapses column |
+| `trivy: command not found` | Rerun `python scripts/deploy_rocky.py`; it verifies/installs Trivy from the official Aqua Security RPM repo. |
+| `nuclei: command not found` | Rerun `python scripts/deploy_rocky.py`; it installs the pinned Nuclei binary if missing. |
+| HEC token missing on Rocky | Rerun deployment and confirm `.env` contains `SPLUNK_HEC_TOKEN`. |
+| HEC push fails | Confirm Rocky can reach `http://192.168.56.1:8086/services/collector/event`. |
+| MISP write occurs unexpectedly | Keep `MISP_ALLOW_WRITE=false`; scanner-side MISP mirroring will skip live writes. |
+| Full Nuclei scan is slow | Use `python scripts/test_scanners.py` for demo validation and reserve full scans for scheduled runs. |

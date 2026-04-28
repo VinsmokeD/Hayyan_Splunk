@@ -44,10 +44,17 @@ SEVERITY_MAP = {
 
 # ── Config from env ───────────────────────────────────────────────────────────
 def _load_env():
-    env_file = Path(__file__).parent.parent.parent / ".env"
+    scan_home = Path(__file__).resolve().parent.parent
+    env_files = [
+        scan_home / "config" / "splunkhec.env",
+        scan_home / ".env",
+        Path("/opt/.env"),
+    ]
     cfg = {}
-    if env_file.exists():
-        for line in env_file.read_text().splitlines():
+    for env_file in env_files:
+        if not env_file.exists():
+            continue
+        for line in env_file.read_text(encoding="utf-8").splitlines():
             line = line.strip()
             if line and not line.startswith("#") and "=" in line:
                 k, _, v = line.partition("=")
